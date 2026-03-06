@@ -1,0 +1,8 @@
+.env
+config/google_credentials.json
+__pycache__/
+*.pyc
+.DS_Store
+*.xlsx
+*.pdf
+.streamlit/secrets.toml

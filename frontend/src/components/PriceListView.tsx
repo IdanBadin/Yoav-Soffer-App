@@ -172,9 +172,12 @@ export function PriceListView({ apiUrl }: Props) {
             className="btn btn-ghost"
             onClick={handleRefreshIndex}
             disabled={refreshing || loading}
-            style={{ fontSize: '0.82rem', padding: '8px 14px' }}
+            style={{ fontSize: '0.82rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <span style={{ display: 'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>⟳</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin 0.9s linear infinite' : 'none', flexShrink: 0 }}>
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
             {refreshing ? 'מרענן...' : 'רענן מחירון'}
           </button>
           <button
@@ -257,7 +260,12 @@ export function PriceListView({ apiUrl }: Props) {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: 'var(--sp-6)', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '8px', animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</div>
+            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 0.9s linear infinite' }}>
+                <circle cx="12" cy="12" r="9" stroke="var(--border-med)" />
+                <path d="M12 3 A9 9 0 0 1 21 12" stroke="var(--accent)" />
+              </svg>
+            </div>
             <div>טוען מחירון...</div>
           </div>
         ) : filtered.length === 0 ? (

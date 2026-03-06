@@ -44,13 +44,26 @@ const STEP_DEFS = [
       'מחשב סה"כ...',
       'בונה הצעת מחיר...',
       'בונה כתב חלקים...',
-      'קבצי Excel מוכנים',
+      'מסיים וממתין לאישור שרת...',
     ],
-    doneLabel: 'קבצים הופקו בהצלחה',
+    doneLabel: 'קבצי Excel הופקו בהצלחה',
   },
 ]
 
 const STEP_INTERVALS = [800, 3800, 700]
+
+function SpinnerSvg() {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+      style={{ animation: 'spin 0.9s linear infinite' }}
+    >
+      <circle cx="12" cy="12" r="9" stroke="rgba(0,0,0,0.2)" />
+      <path d="M12 3 A9 9 0 0 1 21 12" stroke="currentColor" />
+    </svg>
+  )
+}
 
 export function ProcessingView({ step }: Props) {
   const [msgIndex, setMsgIndex] = useState(0)
@@ -170,7 +183,7 @@ export function ProcessingView({ step }: Props) {
                   transition: 'all 0.3s ease',
                 }}>
                   {done ? '✓' : active ? (
-                    <span className="spin-icon">↻</span>
+                    <SpinnerSvg />
                   ) : i + 1}
                 </div>
 
@@ -258,7 +271,6 @@ export function ProcessingView({ step }: Props) {
       <style>{`
         .processing-wrap { max-width: 540px; margin: 0 auto; width: 100%; }
         .processing-card { padding: var(--sp-4); }
-        .spin-icon { display: inline-block; animation: spin 1s linear infinite; }
         .blink-cursor { animation: blink 1s step-end infinite; }
         .terminal-log {
           background: #0a0c0f;
@@ -289,8 +301,8 @@ export function ProcessingView({ step }: Props) {
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: 0 } }
         @keyframes shimmer {
-          0% { transform: translateX(-100%) }
-          100% { transform: translateX(200%) }
+          0% { transform: translateX(200%) }
+          100% { transform: translateX(-100%) }
         }
       `}</style>
     </div>

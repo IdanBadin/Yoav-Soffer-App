@@ -172,7 +172,7 @@ export function PriceListView({ apiUrl }: Props) {
   return (
     <div style={{ paddingTop: 'var(--sp-2)' }}>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-2)', marginBottom: 'var(--sp-3)', flexWrap: 'wrap' }}>
+      <div className="price-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-2)', marginBottom: 'var(--sp-3)', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '4px' }}>ניהול מחירון</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
@@ -210,7 +210,7 @@ export function PriceListView({ apiUrl }: Props) {
 
       {/* Stats row */}
       {!loading && rows.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: 'var(--sp-3)' }}>
+        <div className="price-stats-grid" style={{ marginBottom: 'var(--sp-3)' }}>
           {[
             { label: 'פריטים', value: stats.total.toLocaleString('he-IL'), color: 'var(--accent)' },
             { label: 'עם מחיר', value: stats.withPrice.toLocaleString('he-IL'), color: 'var(--success)' },

@@ -46,10 +46,10 @@ export function Header({ activeView, onViewChange }: Props) {
             />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+            <div className="header-logo-name" style={{ fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
               י. סופר מערכות חשמל בע"מ
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '1px' }}>
+            <div className="header-subtitle" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: '1px' }}>
               מערכת ייצור הצעות מחיר
             </div>
           </div>
@@ -116,7 +116,7 @@ function NavTab({
       }}
     >
       {icon}
-      {label}
+      <span className="header-nav-label">{label}</span>
     </button>
   )
 }

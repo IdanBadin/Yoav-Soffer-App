@@ -43,7 +43,7 @@ export function ProjectForm({ fileName, onSubmit, loading }: Props) {
       </div>
 
       <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-        <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 'var(--sp-2)', alignItems: 'end' }}>
+        <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 160px', gap: 'var(--sp-2)', alignItems: 'end' }}>
           <div>
             <label className="field-label">שם הפרויקט *</label>
             <input

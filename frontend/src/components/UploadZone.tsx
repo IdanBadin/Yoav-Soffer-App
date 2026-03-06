@@ -104,7 +104,7 @@ export function UploadZone({ onFile }: Props) {
       {/* How it works */}
       <div>
         <div className="section-label" style={{ marginBottom: 'var(--sp-2)' }}>איך זה עובד</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+        <div className="steps-grid">
           {[
             {
               num: '01',

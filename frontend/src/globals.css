@@ -221,24 +221,54 @@ label.field-label {
   width: 100%;
 }
 
-/* ── Mobile responsive ──────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .page-wrap {
-    padding: var(--sp-3) var(--sp-2);
-  }
-  .card {
-    padding: var(--sp-3);
-  }
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .downloads-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .form-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .table-hide-mobile {
-    display: none;
-  }
+/* ── Responsive grids (class-based, overridable) ────────────────────────── */
+.steps-grid        { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.price-stats-grid  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* ── Tablet (≤ 768px) ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .price-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* ── Mobile (≤ 640px) ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Layout */
+  .page-wrap { padding: var(--sp-2) var(--sp-2); }
+  .card      { padding: var(--sp-3) var(--sp-2); }
+
+  /* Header */
+  .header-subtitle  { display: none !important; }
+  .header-nav-label { display: none !important; }
+  .header-logo-name { font-size: 0.82rem !important; }
+
+  /* Grids */
+  .stats-grid       { grid-template-columns: repeat(2, 1fr) !important; }
+  .downloads-grid   { grid-template-columns: 1fr !important; }
+  .form-grid        { grid-template-columns: 1fr !important; }
+  .form-grid > div:last-child > input[type="date"] { min-width: unset !important; width: 100% !important; }
+  .steps-grid       { grid-template-columns: 1fr !important; }
+  .price-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .price-form-grid  { grid-template-columns: 1fr 1fr !important; }
+
+  /* Table */
+  .table-hide-mobile { display: none; }
+
+  /* Typography */
+  h1 { font-size: 1.15rem !important; }
+
+  /* Buttons — full width stacked on mobile */
+  .btn-mobile-full { width: 100%; }
+
+  /* Processing */
+  .processing-wrap { padding: 0 !important; }
+  .terminal-body   { min-height: 52px !important; }
+}
+
+/* ── Very small (≤ 400px) ───────────────────────────────────────────────── */
+@media (max-width: 400px) {
+  .header-logo-name { display: none !important; }
+}
+
+/* ── Prevent horizontal overflow globally ──────────────────────────────── */
+html, body { overflow-x: hidden; }
+.page-wrap  { overflow-x: hidden; }

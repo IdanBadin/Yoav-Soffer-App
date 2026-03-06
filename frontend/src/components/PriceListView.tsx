@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import type { PriceRow } from '../types'
 
 interface Props {
@@ -26,6 +26,15 @@ export function PriceListView({ apiUrl }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+
+  // Dismiss delete-confirm when clicking anywhere outside the delete button
+  useEffect(() => {
+    if (deleteConfirm === null) return
+    const dismiss = () => setDeleteConfirm(null)
+    // Use setTimeout so the current click event doesn't immediately dismiss
+    const t = setTimeout(() => document.addEventListener('click', dismiss, { once: true }), 0)
+    return () => { clearTimeout(t); document.removeEventListener('click', dismiss) }
+  }, [deleteConfirm])
   const [sortCol, setSortCol] = useState<keyof PriceRow>('catalog_number')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -92,7 +101,15 @@ export function PriceListView({ apiUrl }: Props) {
     }
   }
 
-  const handleDelete = async (row: number) => {
+  const stats = useMemo(() => ({
+    total: rows.length,
+    withPrice: rows.filter(r => r.unit_price > 0).length,
+    suppliers: new Set(rows.map(r => r.manufacturer).filter(Boolean)).size,
+    totalValue: rows.reduce((s, r) => s + r.unit_price, 0),
+  }), [rows])
+
+  const handleDelete = async (row: number, e: React.MouseEvent) => {
+    e.stopPropagation()
     if (deleteConfirm !== row) {
       setDeleteConfirm(row)
       return
@@ -190,6 +207,29 @@ export function PriceListView({ apiUrl }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Stats row */}
+      {!loading && rows.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: 'var(--sp-3)' }}>
+          {[
+            { label: 'פריטים', value: stats.total.toLocaleString('he-IL'), color: 'var(--accent)' },
+            { label: 'עם מחיר', value: stats.withPrice.toLocaleString('he-IL'), color: 'var(--success)' },
+            { label: 'ספקים', value: stats.suppliers.toLocaleString('he-IL'), color: 'var(--text-mid)' },
+            { label: 'ערך כולל', value: `₪${stats.totalValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, color: 'var(--warning)' },
+          ].map(s => (
+            <div key={s.label} style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-lg)',
+              padding: '14px 16px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.color, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{s.value}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div style={{
@@ -331,37 +371,55 @@ export function PriceListView({ apiUrl }: Props) {
                             <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
                               <button
                                 onClick={() => handleEditStart(row)}
-                                title="ערוך"
+                                title="ערוך שורה"
                                 style={{
                                   background: 'none',
                                   border: '1px solid var(--border-med)',
                                   borderRadius: '6px',
-                                  padding: '5px 8px',
+                                  padding: '5px 7px',
                                   cursor: 'pointer',
                                   color: 'var(--text-muted)',
-                                  fontSize: '0.75rem',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   transition: 'all 0.15s',
                                 }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(246,201,14,0.4)' }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-med)' }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(246,201,14,0.4)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-dim)' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-med)'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
                               >
-                                ✏
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
                               </button>
                               <button
-                                onClick={() => handleDelete(row.row)}
-                                title={deleteConfirm === row.row ? 'לחץ שוב לאישור' : 'מחק'}
+                                onClick={(e) => handleDelete(row.row, e)}
+                                title={deleteConfirm === row.row ? 'לחץ שוב לאישור מחיקה' : 'מחק שורה'}
                                 style={{
-                                  background: deleteConfirm === row.row ? 'rgba(239,68,68,0.12)' : 'none',
-                                  border: `1px solid ${deleteConfirm === row.row ? 'rgba(239,68,68,0.4)' : 'var(--border-med)'}`,
+                                  background: deleteConfirm === row.row ? 'rgba(239,68,68,0.1)' : 'none',
+                                  border: `1px solid ${deleteConfirm === row.row ? 'rgba(239,68,68,0.5)' : 'var(--border-med)'}`,
                                   borderRadius: '6px',
-                                  padding: '5px 8px',
+                                  padding: '5px 7px',
                                   cursor: 'pointer',
                                   color: deleteConfirm === row.row ? 'var(--error)' : 'var(--text-muted)',
-                                  fontSize: '0.75rem',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   transition: 'all 0.15s',
+                                  gap: '3px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: deleteConfirm === row.row ? 700 : 400,
                                 }}
                               >
-                                {deleteConfirm === row.row ? '✓?' : '🗑'}
+                                {deleteConfirm === row.row ? (
+                                  <>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                    אשר
+                                  </>
+                                ) : (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3,6 5,6 21,6"/>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                    <path d="M10 11v6M14 11v6"/>
+                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                  </svg>
+                                )}
                               </button>
                             </div>
                           </td>

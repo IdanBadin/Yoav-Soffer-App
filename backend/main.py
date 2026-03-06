@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
+import anthropic as _anthropic
 import gspread
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -237,26 +238,41 @@ async def process(
 ):
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="ANTHROPIC_API_KEY לא מוגדר בסביבת הייצור. יש להגדיר אותו ב-Railway Variables."
+        )
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=422, detail="יש להעלות קובץ PDF בלבד")
+        raise HTTPException(status_code=422, detail="יש להעלות קובץ PDF בלבד. סוג הקובץ שהועלה אינו נתמך.")
 
+    MAX_SIZE = 50 * 1024 * 1024  # 50 MB
     tmp_path = None
     try:
+        content = await file.read()
+
+        if len(content) == 0:
+            raise HTTPException(status_code=422, detail="הקובץ שהועלה ריק. ודא שהקובץ תקין ונסה שנית.")
+
+        if len(content) > MAX_SIZE:
+            size_mb = len(content) / (1024 * 1024)
+            raise HTTPException(
+                status_code=422,
+                detail=f"הקובץ גדול מדי ({size_mb:.1f} MB). הגודל המקסימלי הוא 50 MB."
+            )
+
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-            content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
 
-        logger.info(f"Processing PDF: {file.filename}")
+        logger.info(f"Processing PDF: {file.filename} ({len(content) / 1024:.0f} KB)")
         result = parse_pdf(tmp_path, api_key)
         all_components = result["components"] + result["flagged"]
 
         if not all_components:
             raise HTTPException(
                 status_code=422,
-                detail="לא זוהו רכיבים בשרטוט. ודא שהקובץ הנכון הועלה."
+                detail="לא זוהו רכיבי חשמל בשרטוט. ודא שהקובץ הנכון הועלה ושהוא מכיל רשימת ציוד."
             )
 
         if _price_index:
@@ -279,15 +295,50 @@ async def process(
 
     except HTTPException:
         raise
+    except _anthropic.AuthenticationError:
+        logger.error("Anthropic authentication failed")
+        raise HTTPException(
+            status_code=401,
+            detail="מפתח ה-API של Anthropic אינו תקין. יש לעדכן את ANTHROPIC_API_KEY ב-Railway Variables."
+        )
+    except _anthropic.RateLimitError:
+        logger.error("Anthropic rate limit hit")
+        raise HTTPException(
+            status_code=429,
+            detail="חרגת ממגבלת הקריאות ל-Claude AI. המתן מספר שניות ונסה שנית."
+        )
+    except _anthropic.APIConnectionError as e:
+        logger.error(f"Anthropic connection error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="לא ניתן להתחבר ל-Claude AI. ייתכן ויש בעיית רשת זמנית — נסה שנית."
+        )
+    except _anthropic.BadRequestError as e:
+        logger.error(f"Anthropic bad request: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail="קובץ ה-PDF מכיל יותר מדי נתונים לעיבוד בבת אחת. נסה לפצל את הקובץ לחלקים."
+        )
+    except MemoryError:
+        logger.error("MemoryError during processing")
+        raise HTTPException(
+            status_code=500,
+            detail="קובץ ה-PDF גדול מדי לעיבוד. נסה קובץ קטן יותר."
+        )
     except Exception as e:
         logger.error(f"Processing error: {e}", exc_info=True)
         err = str(e)
         if "credit balance" in err.lower() or "too low" in err.lower():
             raise HTTPException(
-                status_code=500,
-                detail="יתרת הקרדיטים ב-Anthropic נמוכה מדי. יש להוסיף קרדיטים ב-console.anthropic.com"
+                status_code=402,
+                detail="יתרת הקרדיטים ב-Anthropic אזלה. יש להוסיף קרדיטים בכתובת console.anthropic.com"
             )
-        raise HTTPException(status_code=500, detail="שגיאה בעיבוד השרטוט. נסה שנית.")
+        if "could not be decoded" in err.lower() or "unable to" in err.lower() or "pdf" in err.lower():
+            raise HTTPException(
+                status_code=422,
+                detail="קובץ ה-PDF פגום או מוצפן ולא ניתן לקרוא אותו. נסה לייצא את הקובץ מחדש."
+            )
+        raise HTTPException(status_code=500, detail=f"שגיאה בעיבוד השרטוט: {err[:200]}")
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)

@@ -19,9 +19,19 @@ export interface ProcessResult {
 }
 
 export type AppState = 'idle' | 'ready' | 'processing' | 'results'
+export type ActiveView = 'main' | 'prices'
 
 export interface ProjectMeta {
   projectName: string
   managerName: string
   date: string
+}
+
+export interface PriceRow {
+  row: number
+  catalog_number: string
+  item_name: string
+  unit_price: number
+  unit: string
+  manufacturer: string
 }

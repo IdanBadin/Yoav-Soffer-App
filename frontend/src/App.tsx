@@ -4,7 +4,8 @@ import { UploadZone } from './components/UploadZone'
 import { ProjectForm } from './components/ProjectForm'
 import { ProcessingView } from './components/ProcessingView'
 import { ResultsView } from './components/ResultsView'
-import type { AppState, ProcessResult, ProjectMeta } from './types'
+import { PriceListView } from './components/PriceListView'
+import type { ActiveView, AppState, ProcessResult, ProjectMeta } from './types'
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
 
@@ -26,6 +27,7 @@ function ErrorBanner({ message, onClose }: { message: string; onClose: () => voi
 }
 
 export default function App() {
+  const [activeView, setActiveView] = useState<ActiveView>('main')
   const [appState, setAppState] = useState<AppState>('idle')
   const [file, setFile] = useState<File | null>(null)
   const [processingStep, setProcessingStep] = useState(0)
@@ -46,8 +48,8 @@ export default function App() {
     setAppState('processing')
     setProcessingStep(0)
 
-    const t1 = setTimeout(() => setProcessingStep(1), 1500)
-    const t2 = setTimeout(() => setProcessingStep(2), 4000)
+    const t1 = setTimeout(() => setProcessingStep(1), 2000)
+    const t2 = setTimeout(() => setProcessingStep(2), 5000)
 
     try {
       const formData = new FormData()
@@ -94,40 +96,46 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Header />
+      <Header activeView={activeView} onViewChange={setActiveView} />
       <main className="page-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-        {appState !== 'results' && (
-          <div style={{ paddingTop: 'var(--sp-2)' }}>
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '4px' }}>
-              ייצור הצעות מחיר
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              העלה שרטוט AutoCAD PDF וקבל קבצי Excel מוכנים להגשה
-            </p>
-          </div>
-        )}
+        {activeView === 'prices' ? (
+          <PriceListView apiUrl={API_URL} />
+        ) : (
+          <>
+            {appState !== 'results' && (
+              <div style={{ paddingTop: 'var(--sp-2)' }}>
+                <h1 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '4px' }}>
+                  ייצור הצעות מחיר
+                </h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  העלה שרטוט AutoCAD PDF וקבל קבצי Excel מוכנים להגשה
+                </p>
+              </div>
+            )}
 
-        {error && <ErrorBanner message={error} onClose={() => setError(null)} />}
+            {error && <ErrorBanner message={error} onClose={() => setError(null)} />}
 
-        {appState === 'idle' && <UploadZone onFile={handleFile} />}
+            {appState === 'idle' && <UploadZone onFile={handleFile} />}
 
-        {appState === 'ready' && file && (
-          <ProjectForm
-            fileName={file.name}
-            onSubmit={handleSubmit}
-            loading={false}
-          />
-        )}
+            {appState === 'ready' && file && (
+              <ProjectForm
+                fileName={file.name}
+                onSubmit={handleSubmit}
+                loading={false}
+              />
+            )}
 
-        {appState === 'processing' && <ProcessingView step={processingStep} />}
+            {appState === 'processing' && <ProcessingView step={processingStep} />}
 
-        {appState === 'results' && result && meta && (
-          <ResultsView
-            result={result}
-            projectName={meta.projectName}
-            dateStr={meta.date}
-            onReset={handleReset}
-          />
+            {appState === 'results' && result && meta && (
+              <ResultsView
+                result={result}
+                projectName={meta.projectName}
+                dateStr={meta.date}
+                onReset={handleReset}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

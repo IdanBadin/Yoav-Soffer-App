@@ -214,10 +214,11 @@ label.field-label {
 
 /* ── Responsive layout ──────────────────────────────────────────────────── */
 .page-wrap {
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: var(--sp-4) var(--sp-3);
   flex: 1;
+  width: 100%;
 }
 
 /* ── Mobile responsive ──────────────────────────────────────────────────── */

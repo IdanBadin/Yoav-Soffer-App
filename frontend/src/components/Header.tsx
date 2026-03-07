@@ -12,17 +12,19 @@ export function Header({ activeView, onViewChange }: Props) {
         <div className="flex justify-between h-20 items-center">
 
           {/* Logo + company name */}
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-xl flex-shrink-0">
-              <span className="material-symbols-outlined text-background-dark text-xl font-bold select-none">
-                flash_on
-              </span>
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-xl px-3 py-1.5 shadow-sm flex-shrink-0">
+              <img
+                src="/logo.png"
+                alt="י. סופר מערכות חשמל בע&quot;מ"
+                className="h-9 w-auto object-contain"
+              />
             </div>
-            <div className="flex flex-col">
-              <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 leading-tight">
+            <div className="hidden sm:flex flex-col">
+              <span className="text-base font-extrabold tracking-tight text-slate-100 leading-tight">
                 י. סופר מערכות חשמל בע&quot;מ
               </span>
-              <span className="text-xs font-medium text-primary/80 leading-tight hidden sm:block">
+              <span className="text-xs font-medium text-primary/80 leading-tight">
                 מערכת ייצור הצעות מחיר
               </span>
             </div>

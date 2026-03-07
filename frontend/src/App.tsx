@@ -237,7 +237,7 @@ export default function App() {
         )}
       </main>
       <footer className="py-6 border-t border-primary/10 text-center">
-        <p className="text-xs text-slate-500">כל הזכויות שמורות לי. סופר מערכות חשמל בע&quot;מ © 2024</p>
+        <p className="text-xs text-slate-500">כל הזכויות שמורות לי. סופר מערכות חשמל בע&quot;מ © {new Date().getFullYear()}</p>
       </footer>
     </div>
   )

@@ -91,7 +91,7 @@ export function ProcessingView({ step }: Props) {
       {/* Header */}
       <div className="flex items-end justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-mono font-medium text-slate-100">מעבד שרטוט...</h1>
+          <h1 className="text-2xl sm:text-3xl font-mono font-medium text-slate-100">מעבד שרטוט...</h1>
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 bg-primary/20 text-primary text-sm mono-font rounded-full border border-primary/30">
               {Math.min(Math.round(progress), 99)}% הושלם
@@ -147,7 +147,7 @@ export function ProcessingView({ step }: Props) {
                   {active && (
                     <p className="text-xs text-primary/60 mono-font flex items-center gap-1 mt-0.5">
                       <span>›</span>
-                      <span className="truncate max-w-[280px]">{currentMsg}</span>
+                      <span className="truncate max-w-[160px] sm:max-w-[280px]">{currentMsg}</span>
                       <span className="blink-cursor">█</span>
                     </p>
                   )}
@@ -182,7 +182,7 @@ export function ProcessingView({ step }: Props) {
             <div className="w-3 h-3 rounded-full bg-amber-500/80" />
             <div className="w-3 h-3 rounded-full bg-success/80" />
           </div>
-          <span className="text-[10px] text-slate-400 mono-font uppercase tracking-widest">לוג מערכת</span>
+          <span className="text-xs text-slate-200 font-semibold mono-font uppercase tracking-widest">לוג מערכת</span>
         </div>
         <div className="bg-black p-5 mono-font text-sm leading-relaxed min-h-[120px] flex flex-col justify-end gap-1.5">
           {[...logLines, currentMsg].slice(-4).map((line, i, arr) => (

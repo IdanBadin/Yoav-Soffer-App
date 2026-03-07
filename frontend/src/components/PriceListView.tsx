@@ -195,11 +195,11 @@ export function PriceListView({ apiUrl }: Props) {
             { label: 'ספקים פעילים', value: stats.suppliers.toLocaleString('he-IL'), icon: 'local_shipping', color: 'text-slate-300' },
             { label: 'ערך מלאי כולל', value: `₪${stats.totalValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: 'payments', color: 'text-warning' },
           ].map(s => (
-            <div key={s.label} className="flex flex-col gap-1 p-5 rounded-xl border border-primary/10 bg-primary/5 hover:border-primary/30 transition-colors">
+            <div key={s.label} className="flex flex-col gap-2 p-4 rounded-xl border border-primary/10 bg-primary/5 hover:border-primary/30 transition-colors">
               <span className="text-slate-400 text-sm font-medium">{s.label}</span>
-              <div className="flex items-center justify-between">
-                <span className={`mono-font text-2xl font-bold ${s.color}`}>{s.value}</span>
-                <span className="material-symbols-outlined text-primary/30 select-none">{s.icon}</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className={`mono-font text-xl sm:text-2xl font-bold ${s.color} min-w-0 truncate`}>{s.value}</span>
+                <span className="material-symbols-outlined text-primary/30 select-none flex-shrink-0">{s.icon}</span>
               </div>
             </div>
           ))}
@@ -245,12 +245,13 @@ export function PriceListView({ apiUrl }: Props) {
                 </label>
                 <input
                   type={field === 'unit_price' ? 'number' : 'text'}
-                  value={field === 'unit_price' ? newRowData.unit_price : newRowData[field]}
+                  value={field === 'unit_price' ? (newRowData.unit_price === 0 ? '' : newRowData.unit_price) : newRowData[field]}
+                  placeholder={field === 'unit_price' ? '0' : undefined}
                   onChange={e => setNewRowData(p => ({
                     ...p,
                     [field]: field === 'unit_price' ? parseFloat(e.target.value) || 0 : e.target.value,
                   }))}
-                  className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                  className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary text-sm"
                   style={field === 'unit_price' ? { direction: 'ltr', textAlign: 'left' } : {}}
                 />
               </div>
@@ -294,16 +295,16 @@ export function PriceListView({ apiUrl }: Props) {
               <thead>
                 <tr className="bg-primary/10 border-b border-primary/10">
                   {([
-                    { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט' },
-                    { col: 'item_name' as keyof PriceRow, label: 'שם מוצר' },
-                    { col: 'manufacturer' as keyof PriceRow, label: 'יצרן' },
-                    { col: 'unit' as keyof PriceRow, label: 'יחידה' },
-                    { col: 'unit_price' as keyof PriceRow, label: 'מחיר' },
-                  ]).map(({ col, label }) => (
+                    { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט',    hide: false },
+                    { col: 'item_name'      as keyof PriceRow, label: 'שם מוצר', hide: false },
+                    { col: 'manufacturer'   as keyof PriceRow, label: 'יצרן',    hide: true  },
+                    { col: 'unit'           as keyof PriceRow, label: 'יחידה',   hide: true  },
+                    { col: 'unit_price'     as keyof PriceRow, label: 'מחיר',    hide: false },
+                  ]).map(({ col, label, hide }) => (
                     <th
                       key={col}
                       onClick={() => handleSort(col)}
-                      className="px-5 py-4 text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-primary/10 transition-colors"
+                      className={`px-5 py-4 text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-primary/10 transition-colors${hide ? ' table-hide-mobile' : ''}`}
                     >
                       <div className="flex items-center gap-1">
                         <span className={sortCol === col ? 'text-primary' : 'text-slate-400'}>{label}</span>
@@ -327,7 +328,7 @@ export function PriceListView({ apiUrl }: Props) {
                       {isEditing ? (
                         <>
                           {(['catalog_number', 'item_name', 'manufacturer', 'unit'] as const).map(f => (
-                            <td key={f} className="px-3 py-2">
+                            <td key={f} className={`px-3 py-2${f === 'manufacturer' || f === 'unit' ? ' table-hide-mobile' : ''}`}>
                               <input
                                 className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
                                 value={editData[f]}
@@ -366,8 +367,8 @@ export function PriceListView({ apiUrl }: Props) {
                         <>
                           <td className="px-5 py-4 mono-font text-sm font-bold text-primary">{row.catalog_number || '—'}</td>
                           <td className="px-5 py-4 text-sm font-medium text-slate-200">{row.item_name || '—'}</td>
-                          <td className="px-5 py-4 text-sm text-slate-400">{row.manufacturer || '—'}</td>
-                          <td className="px-5 py-4 text-sm">
+                          <td className="px-5 py-4 text-sm text-slate-400 table-hide-mobile">{row.manufacturer || '—'}</td>
+                          <td className="px-5 py-4 text-sm table-hide-mobile">
                             <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">{row.unit}</span>
                           </td>
                           <td className="px-5 py-4 mono-font text-sm font-bold text-slate-200" style={{ direction: 'ltr', textAlign: 'left' }}>

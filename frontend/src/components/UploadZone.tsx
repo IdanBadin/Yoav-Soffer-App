@@ -26,7 +26,7 @@ export function UploadZone({ onFile }: Props) {
 
       {/* Hero heading */}
       <div className="space-y-3">
-        <h1 className="text-4xl md:text-5xl font-black text-slate-100 leading-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-100 leading-tight">
           עיבוד שרטוטים אוטומטי
         </h1>
         <p className="text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
@@ -48,21 +48,21 @@ export function UploadZone({ onFile }: Props) {
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={[
-            'border-2 border-dashed rounded-xl p-16 flex flex-col items-center gap-6 cursor-pointer transition-all',
+            'border-2 border-dashed rounded-xl p-8 sm:p-16 flex flex-col items-center gap-6 cursor-pointer transition-all',
             dragging
               ? 'border-primary bg-primary/10'
               : 'border-primary/30 hover:border-primary/60 hover:bg-primary/5',
           ].join(' ')}
         >
           {/* Upload icon */}
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center border transition-all ${dragging ? 'bg-primary/20 border-primary/40' : 'bg-primary/10 border-primary/20'}`}>
-            <span className="material-symbols-outlined text-5xl text-primary select-none" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center border transition-all ${dragging ? 'bg-primary/20 border-primary/40' : 'bg-primary/10 border-primary/20'}`}>
+            <span className="material-symbols-outlined text-4xl sm:text-5xl text-primary select-none" style={{ fontVariationSettings: "'FILL' 1" }}>
               {dragging ? 'download' : 'cloud_upload'}
             </span>
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-slate-100">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-100">
               {dragging ? 'שחרר כדי להעלות' : 'גרור קובץ PDF לכאן'}
             </h3>
             <p className="text-slate-400">

@@ -87,8 +87,17 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-primary/10 border-b border-primary/10 text-slate-300 text-sm font-semibold">
-                {['תיאור', 'מק"ט', 'יצרן', 'כמות', 'יחידה', "מחיר יח'", 'סה"כ', 'סטטוס'].map((h, i) => (
-                  <th key={i} className="px-5 py-4 font-semibold">{h}</th>
+                {([
+                  { h: 'תיאור',     hide: false },
+                  { h: 'מק"ט',      hide: true  },
+                  { h: 'יצרן',      hide: true  },
+                  { h: 'כמות',      hide: false },
+                  { h: 'יחידה',     hide: true  },
+                  { h: "מחיר יח'",  hide: false },
+                  { h: 'סה"כ',      hide: false },
+                  { h: 'סטטוס',     hide: false },
+                ] as const).map(({ h, hide }, i) => (
+                  <th key={i} className={`px-5 py-4 font-semibold${hide ? ' table-hide-mobile' : ''}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -126,11 +135,11 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
       </div>
 
       {/* Grand total bar */}
-      <div className="bg-primary flex items-center justify-between px-8 py-4 rounded-xl shadow-lg">
-        <span className="text-background-dark font-bold text-lg">סה&quot;כ משוער לפרויקט</span>
+      <div className="bg-primary flex flex-wrap items-center justify-between gap-2 px-5 sm:px-8 py-4 rounded-xl shadow-lg">
+        <span className="text-background-dark font-bold text-base sm:text-lg">סה&quot;כ משוער לפרויקט</span>
         <div className="flex items-baseline gap-2" style={{ direction: 'ltr' }}>
           <span className="text-background-dark/70 text-sm font-bold">₪</span>
-          <span className="mono-font text-3xl font-bold text-background-dark">
+          <span className="mono-font text-2xl sm:text-3xl font-bold text-background-dark">
             {grandTotal.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>

@@ -26,17 +26,15 @@ export function PriceListView({ apiUrl }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [sortCol, setSortCol] = useState<keyof PriceRow>('catalog_number')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  // Dismiss delete-confirm when clicking anywhere outside the delete button
   useEffect(() => {
     if (deleteConfirm === null) return
     const dismiss = () => setDeleteConfirm(null)
-    // Use setTimeout so the current click event doesn't immediately dismiss
     const t = setTimeout(() => document.addEventListener('click', dismiss, { once: true }), 0)
     return () => { clearTimeout(t); document.removeEventListener('click', dismiss) }
   }, [deleteConfirm])
-  const [sortCol, setSortCol] = useState<keyof PriceRow>('catalog_number')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const fetchPrices = useCallback(async () => {
     setLoading(true)
@@ -70,13 +68,7 @@ export function PriceListView({ apiUrl }: Props) {
 
   const handleEditStart = (row: PriceRow) => {
     setEditingRow(row.row)
-    setEditData({
-      catalog_number: row.catalog_number,
-      item_name: row.item_name,
-      unit_price: row.unit_price,
-      unit: row.unit,
-      manufacturer: row.manufacturer,
-    })
+    setEditData({ catalog_number: row.catalog_number, item_name: row.item_name, unit_price: row.unit_price, unit: row.unit, manufacturer: row.manufacturer })
     setIsAdding(false)
   }
 
@@ -84,15 +76,9 @@ export function PriceListView({ apiUrl }: Props) {
     if (editingRow === null) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/prices/${editingRow}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
-      })
+      const res = await fetch(`${apiUrl}/prices/${editingRow}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editData) })
       if (!res.ok) throw new Error('שגיאה בשמירה')
-      setRows(prev => prev.map(r =>
-        r.row === editingRow ? { row: editingRow, ...editData } : r
-      ))
+      setRows(prev => prev.map(r => r.row === editingRow ? { row: editingRow, ...editData } : r))
       setEditingRow(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה בשמירה')
@@ -101,24 +87,13 @@ export function PriceListView({ apiUrl }: Props) {
     }
   }
 
-  const stats = useMemo(() => ({
-    total: rows.length,
-    withPrice: rows.filter(r => r.unit_price > 0).length,
-    suppliers: new Set(rows.map(r => r.manufacturer).filter(Boolean)).size,
-    totalValue: rows.reduce((s, r) => s + r.unit_price, 0),
-  }), [rows])
-
   const handleDelete = async (row: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (deleteConfirm !== row) {
-      setDeleteConfirm(row)
-      return
-    }
+    if (deleteConfirm !== row) { setDeleteConfirm(row); return }
     setSaving(true)
     try {
       const res = await fetch(`${apiUrl}/prices/${row}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('שגיאה במחיקה')
-      // After deletion, rows shift — refetch to get accurate row numbers
       await fetchPrices()
       setDeleteConfirm(null)
     } catch (e) {
@@ -131,11 +106,7 @@ export function PriceListView({ apiUrl }: Props) {
   const handleAddSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/prices`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRowData),
-      })
+      const res = await fetch(`${apiUrl}/prices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newRowData) })
       if (!res.ok) throw new Error('שגיאה בהוספה')
       await fetchPrices()
       setIsAdding(false)
@@ -152,144 +123,153 @@ export function PriceListView({ apiUrl }: Props) {
     else { setSortCol(col); setSortDir('asc') }
   }
 
+  const stats = useMemo(() => ({
+    total: rows.length,
+    withPrice: rows.filter(r => r.unit_price > 0).length,
+    suppliers: new Set(rows.map(r => r.manufacturer).filter(Boolean)).size,
+    totalValue: rows.reduce((s, r) => s + r.unit_price, 0),
+  }), [rows])
+
   const filtered = rows
     .filter(r => {
       if (!search) return true
       const q = search.toLowerCase()
-      return (
-        r.catalog_number.toLowerCase().includes(q) ||
-        r.item_name.toLowerCase().includes(q) ||
-        r.manufacturer.toLowerCase().includes(q)
-      )
+      return r.catalog_number.toLowerCase().includes(q) || r.item_name.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q)
     })
     .sort((a, b) => {
-      const av = a[sortCol]
-      const bv = b[sortCol]
+      const av = a[sortCol]; const bv = b[sortCol]
       const cmp = typeof av === 'number' ? av - (bv as number) : String(av).localeCompare(String(bv), 'he')
       return sortDir === 'asc' ? cmp : -cmp
     })
 
+  const FIELD_LABELS: Record<string, string> = {
+    catalog_number: 'מק"ט',
+    item_name: 'שם מוצר',
+    manufacturer: 'יצרן',
+    unit: 'יחידה',
+    unit_price: 'מחיר',
+  }
+
   return (
-    <div style={{ paddingTop: 'var(--sp-2)' }}>
+    <div className="flex flex-col gap-6 py-4">
+
       {/* Page header */}
-      <div className="price-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-2)', marginBottom: 'var(--sp-3)', flexWrap: 'wrap' }}>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '4px' }}>ניהול מחירון</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          <h1 className="text-2xl font-bold text-slate-100 mb-1">ניהול מחירון</h1>
+          <p className="text-slate-400 text-sm">
             {loading ? 'טוען...' : `${rows.length} פריטים`}
             {lastRefresh && (
-              <span style={{ marginRight: '8px', fontSize: '0.75rem' }}>
-                · עדכון אחרון: {lastRefresh.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+              <span className="mr-2 text-xs">
+                · עדכון: {lastRefresh.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="flex gap-2 flex-wrap">
           <button
-            className="btn btn-ghost"
             onClick={handleRefreshIndex}
             disabled={refreshing || loading}
-            style={{ fontSize: '0.82rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl border border-primary/20 hover:bg-primary/10 transition-colors text-primary disabled:opacity-50"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'spin 0.9s linear infinite' : 'none', flexShrink: 0 }}>
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-            {refreshing ? 'מרענן...' : 'רענן מחירון'}
+            <span className={`material-symbols-outlined text-[18px] select-none ${refreshing ? 'spin-animation' : ''}`}>refresh</span>
+            <span>{refreshing ? 'מרענן...' : 'רענן מחירון'}</span>
           </button>
           <button
-            className="btn btn-primary"
             onClick={() => { setIsAdding(true); setEditingRow(null) }}
             disabled={isAdding}
-            style={{ fontSize: '0.82rem', padding: '8px 14px' }}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl bg-primary text-background-dark hover:brightness-110 transition-all shadow-lg disabled:opacity-50"
           >
-            + הוסף פריט
+            <span className="material-symbols-outlined text-[18px] select-none">add</span>
+            <span>הוסף פריט</span>
           </button>
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Stats bar */}
       {!loading && rows.length > 0 && (
-        <div className="price-stats-grid" style={{ marginBottom: 'var(--sp-3)' }}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'פריטים', value: stats.total.toLocaleString('he-IL'), color: 'var(--accent)' },
-            { label: 'עם מחיר', value: stats.withPrice.toLocaleString('he-IL'), color: 'var(--success)' },
-            { label: 'ספקים', value: stats.suppliers.toLocaleString('he-IL'), color: 'var(--text-mid)' },
-            { label: 'ערך כולל', value: `₪${stats.totalValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, color: 'var(--warning)' },
+            { label: 'סה"כ פריטים', value: stats.total.toLocaleString('he-IL'), icon: 'category', color: 'text-primary' },
+            { label: 'עם מחיר מעודכן', value: stats.withPrice.toLocaleString('he-IL'), icon: 'sell', color: 'text-success' },
+            { label: 'ספקים פעילים', value: stats.suppliers.toLocaleString('he-IL'), icon: 'local_shipping', color: 'text-slate-300' },
+            { label: 'ערך מלאי כולל', value: `₪${stats.totalValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: 'payments', color: 'text-warning' },
           ].map(s => (
-            <div key={s.label} style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r-lg)',
-              padding: '14px 16px',
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: s.color, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{s.value}</div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+            <div key={s.label} className="flex flex-col gap-1 p-5 rounded-xl border border-primary/10 bg-primary/5 hover:border-primary/30 transition-colors">
+              <span className="text-slate-400 text-sm font-medium">{s.label}</span>
+              <div className="flex items-center justify-between">
+                <span className={`mono-font text-2xl font-bold ${s.color}`}>{s.value}</span>
+                <span className="material-symbols-outlined text-primary/30 select-none">{s.icon}</span>
+              </div>
             </div>
           ))}
         </div>
       )}
 
+      {/* Error banner */}
       {error && (
-        <div style={{
-          background: 'var(--error-dim)',
-          border: '1px solid rgba(239,68,68,0.25)',
-          borderRight: '3px solid var(--error)',
-          borderRadius: 'var(--r-md)',
-          padding: '10px 14px',
-          fontSize: '0.875rem',
-          color: 'var(--error)',
-          marginBottom: 'var(--sp-3)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <span>⚠ {error}</span>
-          <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem' }}>✕</button>
+        <div className="flex items-center justify-between bg-error/5 border border-error/30 rounded-xl px-5 py-3 text-error text-sm">
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] select-none">error</span>
+            {error}
+          </span>
+          <button onClick={() => setError(null)} className="text-slate-400 hover:text-slate-200 transition-colors">
+            <span className="material-symbols-outlined text-[18px] select-none">close</span>
+          </button>
         </div>
       )}
 
       {/* Search */}
-      <div style={{ marginBottom: 'var(--sp-3)', position: 'relative' }}>
-        <span style={{
-          position: 'absolute',
-          right: '12px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          color: 'var(--text-muted)',
-          fontSize: '0.875rem',
-          pointerEvents: 'none',
-        }}>
-          🔍
-        </span>
+      <div className="relative">
+        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+          <span className="material-symbols-outlined select-none">search</span>
+        </div>
         <input
-          className="input"
-          placeholder="חיפוש לפי מק״ט, שם מוצר, יצרן..."
+          type="text"
+          placeholder='חיפוש לפי מק״ט, שם מוצר, יצרן...'
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ paddingRight: '36px' }}
+          className="w-full bg-primary/5 border border-primary/10 rounded-xl py-3.5 pr-12 pl-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
         />
       </div>
 
       {/* Add new row form */}
       {isAdding && (
-        <div className="card" style={{ marginBottom: 'var(--sp-3)', border: '1px solid rgba(246,201,14,0.25)', background: 'rgba(246,201,14,0.03)' }}>
-          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--accent)', marginBottom: 'var(--sp-2)' }}>
-            הוספת פריט חדש
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
+          <p className="font-bold text-sm text-primary">הוספת פריט חדש</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {(['catalog_number', 'item_name', 'manufacturer', 'unit', 'unit_price'] as const).map(field => (
+              <div key={field}>
+                <label className="block text-xs text-slate-400 uppercase tracking-wider mb-1.5">
+                  {FIELD_LABELS[field]}
+                </label>
+                <input
+                  type={field === 'unit_price' ? 'number' : 'text'}
+                  value={field === 'unit_price' ? newRowData.unit_price : newRowData[field]}
+                  onChange={e => setNewRowData(p => ({
+                    ...p,
+                    [field]: field === 'unit_price' ? parseFloat(e.target.value) || 0 : e.target.value,
+                  }))}
+                  className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                  style={field === 'unit_price' ? { direction: 'ltr', textAlign: 'left' } : {}}
+                />
+              </div>
+            ))}
           </div>
-          <div className="price-form-grid">
-            <Field label='מק"ט' value={newRowData.catalog_number} onChange={v => setNewRowData(p => ({ ...p, catalog_number: v }))} />
-            <Field label="שם מוצר" value={newRowData.item_name} onChange={v => setNewRowData(p => ({ ...p, item_name: v }))} />
-            <Field label="יצרן" value={newRowData.manufacturer} onChange={v => setNewRowData(p => ({ ...p, manufacturer: v }))} />
-            <Field label="יחידה" value={newRowData.unit} onChange={v => setNewRowData(p => ({ ...p, unit: v }))} />
-            <Field label="מחיר" value={String(newRowData.unit_price)} onChange={v => setNewRowData(p => ({ ...p, unit_price: parseFloat(v) || 0 }))} type="number" />
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--sp-2)' }}>
-            <button className="btn btn-primary" onClick={handleAddSave} disabled={saving} style={{ fontSize: '0.82rem', padding: '8px 16px' }}>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 bg-primary text-background-dark font-bold px-4 py-2 rounded-lg text-sm hover:brightness-110 transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[16px] select-none">save</span>
               {saving ? 'שומר...' : 'שמור פריט'}
             </button>
-            <button className="btn btn-ghost" onClick={() => { setIsAdding(false); setNewRowData(EMPTY_ROW) }} style={{ fontSize: '0.82rem', padding: '8px 16px' }}>
+            <button
+              onClick={() => { setIsAdding(false); setNewRowData(EMPTY_ROW) }}
+              className="flex items-center gap-1.5 border border-slate-600 text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-700/30 transition-all"
+            >
+              <span className="material-symbols-outlined text-[16px] select-none">close</span>
               בטל
             </button>
           </div>
@@ -297,128 +277,130 @@ export function PriceListView({ apiUrl }: Props) {
       )}
 
       {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="overflow-hidden rounded-xl border border-primary/10 bg-primary/5 shadow-xl">
         {loading ? (
-          <div style={{ padding: 'var(--sp-6)', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 0.9s linear infinite' }}>
-                <circle cx="12" cy="12" r="9" stroke="var(--border-med)" />
-                <path d="M12 3 A9 9 0 0 1 21 12" stroke="var(--accent)" />
-              </svg>
-            </div>
-            <div>טוען מחירון...</div>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+            <span className="material-symbols-outlined text-4xl spin-animation text-primary select-none">progress_activity</span>
+            <span className="text-sm">טוען מחירון...</span>
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 'var(--sp-6)', textAlign: 'center', color: 'var(--text-muted)' }}>
-            {search ? 'לא נמצאו תוצאות לחיפוש' : 'המחירון ריק — הוסף פריטים באמצעות הכפתור למעלה'}
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-slate-400">
+            <span className="material-symbols-outlined text-4xl select-none">inventory_2</span>
+            <span className="text-sm">{search ? 'לא נמצאו תוצאות לחיפוש' : 'המחירון ריק — הוסף פריטים'}</span>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="price-table">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse">
               <thead>
-                <tr>
-                  <Th label='מק"ט' col="catalog_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <Th label="שם מוצר" col="item_name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <Th label="יצרן" col="manufacturer" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <Th label="יחידה" col="unit" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  <Th label="מחיר" col="unit_price" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} align="left" />
-                  <th style={{ padding: '10px 14px', width: '100px' }} />
+                <tr className="bg-primary/10 border-b border-primary/10">
+                  {([
+                    { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט' },
+                    { col: 'item_name' as keyof PriceRow, label: 'שם מוצר' },
+                    { col: 'manufacturer' as keyof PriceRow, label: 'יצרן' },
+                    { col: 'unit' as keyof PriceRow, label: 'יחידה' },
+                    { col: 'unit_price' as keyof PriceRow, label: 'מחיר' },
+                  ]).map(({ col, label }) => (
+                    <th
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      className="px-5 py-4 text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-primary/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className={sortCol === col ? 'text-primary' : 'text-slate-400'}>{label}</span>
+                        <span className="material-symbols-outlined text-[12px] text-slate-500 select-none">
+                          {sortCol === col ? (sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
+                  <th className="px-5 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500">פעולות</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-primary/5">
                 {filtered.map(row => {
                   const isEditing = editingRow === row.row
                   return (
-                    <tr key={row.row} className={`price-row ${isEditing ? 'editing' : ''}`}>
+                    <tr
+                      key={row.row}
+                      className={`transition-colors ${isEditing ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
+                    >
                       {isEditing ? (
                         <>
-                          <td style={{ padding: '6px 10px' }}>
-                            <input className="input cell-input" value={editData.catalog_number} onChange={e => setEditData(p => ({ ...p, catalog_number: e.target.value }))} />
+                          {(['catalog_number', 'item_name', 'manufacturer', 'unit'] as const).map(f => (
+                            <td key={f} className="px-3 py-2">
+                              <input
+                                className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                                value={editData[f]}
+                                onChange={e => setEditData(p => ({ ...p, [f]: e.target.value }))}
+                              />
+                            </td>
+                          ))}
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              className="w-24 bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                              value={editData.unit_price}
+                              onChange={e => setEditData(p => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))}
+                              style={{ direction: 'ltr', textAlign: 'left' }}
+                            />
                           </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <input className="input cell-input" value={editData.item_name} onChange={e => setEditData(p => ({ ...p, item_name: e.target.value }))} />
-                          </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <input className="input cell-input" value={editData.manufacturer} onChange={e => setEditData(p => ({ ...p, manufacturer: e.target.value }))} />
-                          </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <input className="input cell-input" value={editData.unit} onChange={e => setEditData(p => ({ ...p, unit: e.target.value }))} style={{ width: '60px' }} />
-                          </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <input className="input cell-input" type="number" value={editData.unit_price} onChange={e => setEditData(p => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))} style={{ width: '90px', textAlign: 'left', direction: 'ltr' }} />
-                          </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <button className="btn btn-primary" onClick={handleEditSave} disabled={saving} style={{ fontSize: '0.75rem', padding: '5px 10px', minHeight: 'auto' }}>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={handleEditSave}
+                                disabled={saving}
+                                className="bg-primary text-background-dark font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-110 transition-all disabled:opacity-50"
+                              >
                                 {saving ? '...' : 'שמור'}
                               </button>
-                              <button className="btn btn-ghost" onClick={() => setEditingRow(null)} style={{ fontSize: '0.75rem', padding: '5px 8px', minHeight: 'auto' }}>
-                                ✕
+                              <button
+                                onClick={() => setEditingRow(null)}
+                                className="border border-slate-600 text-slate-300 px-2 py-1.5 rounded-lg text-xs hover:bg-slate-700/30 transition-all"
+                              >
+                                <span className="material-symbols-outlined text-[14px] select-none">close</span>
                               </button>
                             </div>
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="mono" style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600 }}>{row.catalog_number || '—'}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.85rem' }}>{row.item_name || '—'}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', color: 'var(--text-mid)' }}>{row.manufacturer || '—'}</td>
-                          <td style={{ padding: '10px 14px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{row.unit}</td>
-                          <td className="mono" style={{ padding: '10px 14px', fontSize: '0.85rem', fontWeight: 600, textAlign: 'left', direction: 'ltr' }}>
-                            {row.unit_price > 0 ? `₪${row.unit_price.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                          <td className="px-5 py-4 mono-font text-sm font-bold text-primary">{row.catalog_number || '—'}</td>
+                          <td className="px-5 py-4 text-sm font-medium text-slate-200">{row.item_name || '—'}</td>
+                          <td className="px-5 py-4 text-sm text-slate-400">{row.manufacturer || '—'}</td>
+                          <td className="px-5 py-4 text-sm">
+                            <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">{row.unit}</span>
                           </td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                          <td className="px-5 py-4 mono-font text-sm font-bold text-slate-200" style={{ direction: 'ltr', textAlign: 'left' }}>
+                            {row.unit_price > 0
+                              ? `₪${row.unit_price.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : <span className="text-slate-500">—</span>
+                            }
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => handleEditStart(row)}
-                                title="ערוך שורה"
-                                style={{
-                                  background: 'none',
-                                  border: '1px solid var(--border-med)',
-                                  borderRadius: '6px',
-                                  padding: '5px 7px',
-                                  cursor: 'pointer',
-                                  color: 'var(--text-muted)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: 'all 0.15s',
-                                }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(246,201,14,0.4)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-dim)' }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-med)'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+                                title="ערוך"
+                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
+                                <span className="material-symbols-outlined text-[18px] select-none">edit</span>
                               </button>
                               <button
                                 onClick={(e) => handleDelete(row.row, e)}
-                                title={deleteConfirm === row.row ? 'לחץ שוב לאישור מחיקה' : 'מחק שורה'}
-                                style={{
-                                  background: deleteConfirm === row.row ? 'rgba(239,68,68,0.1)' : 'none',
-                                  border: `1px solid ${deleteConfirm === row.row ? 'rgba(239,68,68,0.5)' : 'var(--border-med)'}`,
-                                  borderRadius: '6px',
-                                  padding: '5px 7px',
-                                  cursor: 'pointer',
-                                  color: deleteConfirm === row.row ? 'var(--error)' : 'var(--text-muted)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: 'all 0.15s',
-                                  gap: '3px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: deleteConfirm === row.row ? 700 : 400,
-                                }}
+                                title={deleteConfirm === row.row ? 'לחץ שוב לאישור' : 'מחק'}
+                                className={`p-2 rounded-lg transition-all flex items-center gap-1 text-xs ${
+                                  deleteConfirm === row.row
+                                    ? 'bg-error/10 text-error border border-error/30 px-3 font-bold'
+                                    : 'text-slate-400 hover:text-error hover:bg-error/10'
+                                }`}
                               >
                                 {deleteConfirm === row.row ? (
                                   <>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span className="material-symbols-outlined text-[14px] select-none">check</span>
                                     אשר
                                   </>
                                 ) : (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3,6 5,6 21,6"/>
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                    <path d="M10 11v6M14 11v6"/>
-                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                  </svg>
+                                  <span className="material-symbols-outlined text-[18px] select-none">delete</span>
                                 )}
                               </button>
                             </div>
@@ -432,104 +414,17 @@ export function PriceListView({ apiUrl }: Props) {
             </table>
           </div>
         )}
+
+        {/* Table footer */}
+        {filtered.length > 0 && (
+          <div className="px-5 py-3 bg-primary/5 border-t border-primary/10 flex items-center justify-between">
+            <span className="text-xs mono-font text-slate-400">
+              מציג {filtered.length} מתוך {rows.length} פריטים
+            </span>
+          </div>
+        )}
       </div>
 
-      {filtered.length > 0 && (
-        <div style={{ textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-          מציג {filtered.length} מתוך {rows.length} פריטים
-        </div>
-      )}
-
-      <style>{`
-        .price-form-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-          gap: 12px;
-        }
-        .price-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-family: var(--font-ui);
-        }
-        .price-table thead tr {
-          background: var(--surface-2);
-          border-bottom: 1px solid var(--border-med);
-        }
-        .price-table thead th {
-          text-align: right;
-          font-size: 0.72rem;
-          font-weight: 700;
-          color: var(--text-muted);
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          padding: 10px 14px;
-          user-select: none;
-        }
-        .price-row {
-          border-bottom: 1px solid var(--border);
-          transition: background 0.15s;
-        }
-        .price-row:last-child { border-bottom: none; }
-        .price-row:hover { background: var(--surface-2); }
-        .price-row.editing { background: rgba(246,201,14,0.04); }
-        .cell-input {
-          min-height: 32px;
-          padding: 5px 8px;
-          font-size: 0.8rem;
-        }
-        .th-sortable {
-          cursor: pointer;
-        }
-        .th-sortable:hover { color: var(--text); }
-        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-      `}</style>
-    </div>
-  )
-}
-
-function Th({
-  label, col, sortCol, sortDir, onSort, align = 'right',
-}: {
-  label: string
-  col: keyof PriceRow
-  sortCol: keyof PriceRow
-  sortDir: 'asc' | 'desc'
-  onSort: (col: keyof PriceRow) => void
-  align?: 'right' | 'left'
-}) {
-  const active = sortCol === col
-  return (
-    <th
-      className="th-sortable"
-      onClick={() => onSort(col)}
-      style={{ textAlign: align, padding: '10px 14px' }}
-    >
-      <span style={{ color: active ? 'var(--accent)' : undefined }}>
-        {label}
-        {active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-      </span>
-    </th>
-  )
-}
-
-function Field({
-  label, value, onChange, type = 'text',
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  type?: string
-}) {
-  return (
-    <div>
-      <label className="field-label">{label}</label>
-      <input
-        className="input"
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={type === 'number' ? { direction: 'ltr', textAlign: 'left' } : {}}
-      />
     </div>
   )
 }

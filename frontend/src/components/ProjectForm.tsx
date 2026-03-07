@@ -22,93 +22,84 @@ export function ProjectForm({ fileName, onSubmit, loading }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+    <div className="flex flex-col gap-4">
+
       {/* File pill */}
-      <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: '8px',
-        background: 'var(--accent-dim)',
-        border: '1px solid rgba(246,201,14,0.25)',
-        borderRadius: '20px',
-        padding: '5px 14px',
-        width: 'fit-content',
-        fontSize: '0.82rem',
-        fontWeight: 600,
-        color: 'var(--accent)',
-      }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14,2 14,8 20,8"/>
-        </svg>
-        {fileName}
+      <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 w-fit">
+        <span className="material-symbols-outlined text-primary text-[16px] leading-none select-none">description</span>
+        <span className="text-sm font-bold text-primary truncate max-w-xs">{fileName}</span>
       </div>
 
-      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-        <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 160px', gap: 'var(--sp-2)', alignItems: 'end' }}>
+      {/* Form card */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-surface border border-primary/10 rounded-xl p-6 flex flex-col gap-5"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+          {/* Project name */}
           <div>
-            <label className="field-label">שם הפרויקט *</label>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              שם הפרויקט *
+            </label>
             <input
-              className="input"
               type="text"
               placeholder="לדוגמה: תעשייה אווירית מבנה 118"
               value={projectName}
               onChange={e => setProjectName(e.target.value)}
               required
+              className="w-full bg-background-dark border border-slate-700 rounded-lg py-2.5 px-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
             />
           </div>
+
+          {/* Manager name */}
           <div>
-            <label className="field-label">מנהל הפרויקט</label>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              מנהל הפרויקט
+            </label>
             <input
-              className="input"
               type="text"
               placeholder="לדוגמה: סתיו כהן"
               value={managerName}
               onChange={e => setManagerName(e.target.value)}
+              className="w-full bg-background-dark border border-slate-700 rounded-lg py-2.5 px-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
             />
           </div>
+
+          {/* Date */}
           <div>
-            <label className="field-label">תאריך</label>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              תאריך
+            </label>
             <input
-              className="input"
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
-              style={{ direction: 'ltr', textAlign: 'center', minWidth: '140px' }}
+              className="w-full bg-background-dark border border-slate-700 rounded-lg py-2.5 px-4 text-slate-100 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
+              style={{ direction: 'ltr', textAlign: 'center' }}
             />
           </div>
         </div>
 
-        <div>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading || !projectName.trim()}
-          >
-            {loading ? (
-              <>
-                <SpinnerIcon />
-                מעבד...
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/>
-                </svg>
-                עבד שרטוט
-              </>
-            )}
-          </button>
-        </div>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={loading || !projectName.trim()}
+          className="flex items-center justify-center gap-2 w-full bg-primary text-background-dark font-bold py-3 px-6 rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <span className="material-symbols-outlined text-[18px] spin-animation select-none">progress_activity</span>
+              <span>מעבד...</span>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined text-[18px] select-none">bolt</span>
+              <span>עבד שרטוט</span>
+            </>
+          )}
+        </button>
       </form>
     </div>
-  )
-}
-
-function SpinnerIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      style={{ animation: 'spin 0.8s linear infinite' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-    </svg>
   )
 }

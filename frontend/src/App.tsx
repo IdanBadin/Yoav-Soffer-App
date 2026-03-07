@@ -83,48 +83,30 @@ function parseError(e: unknown, status?: number): AppError {
   }
 }
 
-const ERROR_STYLES: Record<AppError['type'], { border: string; bg: string; icon: string; iconColor: string }> = {
-  validation: { border: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', icon: '⚠', iconColor: 'var(--warning)' },
-  auth:       { border: 'rgba(239,68,68,0.4)',  bg: 'var(--error-dim)',      icon: '🔑', iconColor: 'var(--error)' },
-  network:    { border: 'rgba(107,122,153,0.4)', bg: 'rgba(107,122,153,0.07)', icon: '⚡', iconColor: 'var(--text-muted)' },
-  rate:       { border: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', icon: '⏱', iconColor: 'var(--warning)' },
-  server:     { border: 'rgba(239,68,68,0.4)',  bg: 'var(--error-dim)',      icon: '✕',  iconColor: 'var(--error)' },
-  timeout:    { border: 'rgba(107,122,153,0.4)', bg: 'rgba(107,122,153,0.07)', icon: '⏳', iconColor: 'var(--text-muted)' },
-}
-
 function ErrorDisplay({ error, onClose }: { error: AppError; onClose: () => void }) {
-  const s = ERROR_STYLES[error.type]
+  const typeStyles: Record<AppError['type'], { border: string; text: string; icon: string }> = {
+    validation: { border: 'border-warning/40 bg-warning/5',       text: 'text-warning',    icon: 'warning' },
+    auth:       { border: 'border-error/40 bg-error/5',           text: 'text-error',      icon: 'key' },
+    network:    { border: 'border-slate-600/40 bg-slate-800/30',  text: 'text-slate-400',  icon: 'wifi_off' },
+    rate:       { border: 'border-warning/40 bg-warning/5',       text: 'text-warning',    icon: 'timer' },
+    server:     { border: 'border-error/40 bg-error/5',           text: 'text-error',      icon: 'error' },
+    timeout:    { border: 'border-slate-600/40 bg-slate-800/30',  text: 'text-slate-400',  icon: 'hourglass_empty' },
+  }
+  const s = typeStyles[error.type]
   return (
-    <div style={{
-      background: s.bg,
-      border: `1px solid ${s.border}`,
-      borderRight: `3px solid ${s.border}`,
-      borderRadius: 'var(--r-lg)',
-      padding: '16px 20px',
-      display: 'flex',
-      gap: '14px',
-      alignItems: 'flex-start',
-    }}>
-      <div style={{ fontSize: '1.25rem', lineHeight: 1, flexShrink: 0, marginTop: '1px' }}>{s.icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: s.iconColor, marginBottom: '4px' }}>
-          {error.title}
-        </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-mid)', marginBottom: error.hint ? '6px' : 0, wordBreak: 'break-word' }}>
-          {error.message}
-        </div>
+    <div className={`flex gap-4 items-start border rounded-xl px-5 py-4 ${s.border}`}>
+      <span className={`material-symbols-outlined text-[20px] flex-shrink-0 mt-0.5 select-none ${s.text}`}>{s.icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className={`font-bold text-sm mb-1 ${s.text}`}>{error.title}</p>
+        <p className="text-slate-400 text-sm break-words">{error.message}</p>
         {error.hint && (
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
-            <span style={{ flexShrink: 0 }}>›</span>
-            {error.hint}
-          </div>
+          <p className="text-slate-500 text-xs mt-1.5 flex gap-1">
+            <span>›</span><span>{error.hint}</span>
+          </p>
         )}
       </div>
-      <button
-        onClick={onClose}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1, flexShrink: 0, padding: '2px' }}
-      >
-        ✕
+      <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0">
+        <span className="material-symbols-outlined text-[18px] select-none">close</span>
       </button>
     </div>
   )
@@ -222,24 +204,13 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="min-h-screen flex flex-col bg-background-dark">
       <Header activeView={activeView} onViewChange={setActiveView} />
-      <main className="page-wrap" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 space-y-6">
         {activeView === 'prices' ? (
           <PriceListView apiUrl={API_URL} />
         ) : (
           <>
-            {appState !== 'results' && (
-              <div style={{ paddingTop: 'var(--sp-2)' }}>
-                <h1 style={{ fontSize: '1.375rem', fontWeight: 800, marginBottom: '4px' }}>
-                  ייצור הצעות מחיר
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  העלה שרטוט AutoCAD PDF וקבל קבצי Excel מוכנים להגשה
-                </p>
-              </div>
-            )}
-
             {error && <ErrorDisplay error={error} onClose={() => setError(null)} />}
 
             {appState === 'idle' && <UploadZone onFile={handleFile} />}
@@ -265,6 +236,9 @@ export default function App() {
           </>
         )}
       </main>
+      <footer className="py-6 border-t border-primary/10 text-center">
+        <p className="text-xs text-slate-500">כל הזכויות שמורות לי. סופר מערכות חשמל בע&quot;מ © 2024</p>
+      </footer>
     </div>
   )
 }

@@ -35,85 +35,87 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
   const dateSlug = dateStr.replace(/\//g, '-')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+    <div className="space-y-6 py-4">
+
+      {/* Page header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 mb-1">תוצאות ניתוח שרטוט</h1>
+          <p className="text-slate-400 text-sm">{projectName} · {dateStr}</p>
+        </div>
+        <button
+          onClick={onReset}
+          className="flex items-center gap-2 bg-primary text-background-dark font-bold px-5 py-2.5 rounded-lg hover:brightness-110 transition-all"
+        >
+          <span className="material-symbols-outlined text-[18px] select-none">add_circle</span>
+          <span>עבד שרטוט נוסף</span>
+        </button>
+      </div>
+
       {/* Stat cards */}
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 'var(--sp-2)' }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { num: page_count, label: 'עמודי PDF', color: 'var(--text-mid)' },
-          { num: total, label: 'רכיבים', color: 'var(--text)' },
-          { num: matched, label: 'תואמו למחיר', color: 'var(--success)' },
-          { num: unmatched, label: 'ללא מחיר', color: unmatched > 0 ? 'var(--warning)' : 'var(--success)' },
+          { label: 'עמודי PDF', value: page_count, color: 'text-primary', warn: false },
+          { label: 'רכיבים שזוהו', value: total, color: 'text-primary', warn: false },
+          { label: 'תואמו למחיר', value: matched, color: 'text-success', warn: false },
+          { label: 'ללא מחיר', value: unmatched, color: unmatched > 0 ? 'text-warning' : 'text-success', warn: unmatched > 0 },
         ].map((s, i) => (
-          <div key={i} className="card" style={{ textAlign: 'center', padding: 'var(--sp-3)' }}>
-            <div style={{
-              fontSize: '1.75rem', fontWeight: 800, fontFamily: 'var(--font-mono)',
-              color: s.color, lineHeight: 1, marginBottom: '4px',
-            }}>
-              {s.num}
+          <div
+            key={i}
+            className={`p-6 rounded-xl border ${s.warn ? 'bg-warning/5 border-warning/30' : 'bg-primary/5 border-primary/10'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className={`text-sm font-medium ${s.warn ? 'text-warning' : 'text-slate-400'}`}>{s.label}</p>
+              {s.warn && <span className="material-symbols-outlined text-warning text-sm select-none">warning</span>}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {s.label}
-            </div>
+            <p className={`mono-font text-4xl font-semibold ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Warning banner */}
       {unmatched > 0 && (
-        <div style={{
-          background: 'var(--warning-dim)',
-          border: '1px solid rgba(245,158,11,0.25)',
-          borderRight: '3px solid var(--warning)',
-          borderRadius: 'var(--r-md)',
-          padding: '10px 14px',
-          fontSize: '0.85rem',
-          color: 'var(--warning)',
-          fontWeight: 500,
-        }}>
-          ⚠️ {unmatched} רכיבים ללא מחיר — מסומנים בצהוב בקובץ האקסל. יש למלא ידנית.
+        <div className="flex items-center gap-3 bg-warning/5 border border-warning/30 rounded-xl px-5 py-3 text-warning text-sm font-medium">
+          <span className="material-symbols-outlined text-[18px] select-none flex-shrink-0">warning</span>
+          <span>{unmatched} רכיבים ללא מחיר — מסומנים בצהוב בקובץ האקסל. יש למלא ידנית.</span>
         </div>
       )}
 
-      {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+      {/* Data table */}
+      <div className="bg-primary/5 border border-primary/10 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse">
             <thead>
-              <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                {['תיאור', 'מק"ט', 'יצרן', 'כמות', 'יחידה', 'מחיר', 'סה"כ', ''].map((h, i) => (
-                  <th key={i} style={{
-                    padding: '10px 14px', textAlign: 'right', fontWeight: 600,
-                    color: 'var(--text-muted)', fontSize: '0.72rem', letterSpacing: '0.05em',
-                    textTransform: 'uppercase', whiteSpace: 'nowrap',
-                    fontFamily: i >= 3 ? 'var(--font-mono)' : 'var(--font-ui)',
-                  }}>
-                    {h}
-                  </th>
+              <tr className="bg-primary/10 border-b border-primary/10 text-slate-300 text-sm font-semibold">
+                {['תיאור', 'מק"ט', 'יצרן', 'כמות', 'יחידה', "מחיר יח'", 'סה"כ', 'סטטוס'].map((h, i) => (
+                  <th key={i} className="px-5 py-4 font-semibold">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-sm divide-y divide-primary/5">
               {components.map((c, i) => (
-                <tr key={i} style={{
-                  borderBottom: '1px solid var(--border)',
-                  background: c.price_found ? 'transparent' : 'rgba(245,158,11,0.05)',
-                }}>
-                  <td style={{ padding: '9px 14px', color: 'var(--text)', maxWidth: '240px' }}>{c.description}</td>
-                  <td className="table-hide-mobile" style={{ padding: '9px 14px', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{c.catalog}</td>
-                  <td className="table-hide-mobile" style={{ padding: '9px 14px', color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{c.manufacturer}</td>
-                  <td style={{ padding: '9px 14px', fontFamily: 'var(--font-mono)', textAlign: 'center', color: 'var(--text)' }}>{c.qty}</td>
-                  <td className="table-hide-mobile" style={{ padding: '9px 14px', textAlign: 'center', color: 'var(--text-muted)' }}>{c.unit}</td>
-                  <td style={{ padding: '9px 14px', fontFamily: 'var(--font-mono)', textAlign: 'left', direction: 'ltr', color: c.price_found ? 'var(--text)' : 'var(--warning)', whiteSpace: 'nowrap' }}>
-                    {c.price > 0 ? `₪${c.price.toFixed(2)}` : '—'}
+                <tr
+                  key={i}
+                  className={c.price_found ? 'hover:bg-primary/5 transition-colors' : 'bg-warning/5'}
+                >
+                  <td className="px-5 py-4 font-medium text-slate-200 max-w-[220px]">{c.description}</td>
+                  <td className="px-5 py-4 mono-font text-xs text-primary table-hide-mobile whitespace-nowrap">{c.catalog || '—'}</td>
+                  <td className="px-5 py-4 text-slate-400 table-hide-mobile whitespace-nowrap">{c.manufacturer || '—'}</td>
+                  <td className="px-5 py-4 mono-font text-center text-slate-200">{c.qty}</td>
+                  <td className="px-5 py-4 text-center text-slate-400 table-hide-mobile">{c.unit}</td>
+                  <td className="px-5 py-4 mono-font whitespace-nowrap" style={{ direction: 'ltr', textAlign: 'left' }}>
+                    <span className={c.price_found ? 'text-slate-200' : 'text-warning'}>
+                      {c.price > 0 ? `₪${c.price.toFixed(2)}` : '—'}
+                    </span>
                   </td>
-                  <td style={{ padding: '9px 14px', fontFamily: 'var(--font-mono)', textAlign: 'left', direction: 'ltr', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                  <td className="px-5 py-4 mono-font font-semibold whitespace-nowrap" style={{ direction: 'ltr', textAlign: 'left' }}>
                     {c.price > 0 ? `₪${(c.qty * c.price).toFixed(2)}` : '—'}
                   </td>
-                  <td style={{ padding: '9px 14px' }}>
-                    {!c.price_found && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--warning)', background: 'var(--warning-dim)', borderRadius: '4px', padding: '2px 6px', whiteSpace: 'nowrap' }}>
-                        חסר מחיר
-                      </span>
+                  <td className="px-5 py-4 text-center">
+                    {c.price_found ? (
+                      <span className="inline-flex items-center justify-center bg-success/20 text-success px-3 py-1 rounded-full text-xs font-bold">תקין</span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center bg-warning/20 text-warning px-3 py-1 rounded-full text-xs font-bold">חסר מחיר</span>
                     )}
                   </td>
                 </tr>
@@ -121,58 +123,80 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
             </tbody>
           </table>
         </div>
+      </div>
 
-        {/* Grand total */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 24px',
-          background: 'var(--surface-2)',
-          borderTop: '1px solid var(--border)',
-        }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>סה"כ לפרויקט</span>
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'var(--font-mono)', direction: 'ltr' }}>
-            ₪{grandTotal.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {/* Grand total bar */}
+      <div className="bg-primary flex items-center justify-between px-8 py-4 rounded-xl shadow-lg">
+        <span className="text-background-dark font-bold text-lg">סה&quot;כ משוער לפרויקט</span>
+        <div className="flex items-baseline gap-2" style={{ direction: 'ltr' }}>
+          <span className="text-background-dark/70 text-sm font-bold">₪</span>
+          <span className="mono-font text-3xl font-bold text-background-dark">
+            {grandTotal.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
       </div>
 
       {/* Downloads */}
-      <div className="downloads-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-3)' }}>
-        {[
-          {
-            title: 'הצעת מחיר',
-            desc: '5 עמודות עם נוסחאות Excel',
-            b64: excel_quote,
-            filename: `הצעת_מחיר_${projectSlug}_${dateSlug}.xlsx`,
-            icon: '📄',
-          },
-          {
-            title: 'כתב חלקים',
-            desc: 'רשימה מפורטת עם מק"ט ויצרן',
-            b64: excel_parts,
-            filename: `כתב_חלקים_${projectSlug}_${dateSlug}.xlsx`,
-            icon: '📋',
-          },
-        ].map((dl, i) => (
-          <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{dl.icon} {dl.title}</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{dl.desc}</div>
-            <button
-              className="btn btn-download"
-              onClick={() => downloadExcel(dl.b64, dl.filename)}
+      <div>
+        <h3 className="text-xl font-bold mb-5 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary select-none">download</span>
+          הורדת דוחות וסיכומים
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {[
+            {
+              title: 'הצעת מחיר',
+              desc: '5 עמודות עם נוסחאות Excel',
+              b64: excel_quote,
+              filename: `הצעת_מחיר_${projectSlug}_${dateSlug}.xlsx`,
+              icon: 'description',
+              iconBg: 'bg-blue-900/30 text-blue-400',
+            },
+            {
+              title: 'כתב חלקים (BOM)',
+              desc: 'פירוט טכני מלא עם מק"ט ויצרן',
+              b64: excel_parts,
+              filename: `כתב_חלקים_${projectSlug}_${dateSlug}.xlsx`,
+              icon: 'list_alt',
+              iconBg: 'bg-success/10 text-success',
+            },
+          ].map((dl, i) => (
+            <div
+              key={i}
+              className="bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4"
             >
-              ⬇ הורד Excel
-            </button>
-          </div>
-        ))}
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${dl.iconBg}`}>
+                  <span className="material-symbols-outlined text-3xl select-none">{dl.icon}</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-100">{dl.title}</h4>
+                  <p className="text-slate-400 text-xs mt-0.5">{dl.desc}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => downloadExcel(dl.b64, dl.filename)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-background-dark border border-primary/30 text-primary px-5 py-2.5 rounded-lg font-semibold hover:bg-primary/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px] select-none">download</span>
+                <span>הורד Excel</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Reset */}
-      <div style={{ textAlign: 'center', paddingTop: 'var(--sp-2)' }}>
-        <button className="btn btn-ghost" onClick={onReset}>
-          ↩ עבד שרטוט נוסף
+      {/* Reset link */}
+      <div className="flex justify-center border-t border-primary/10 pt-8 pb-4">
+        <button
+          onClick={onReset}
+          className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors font-medium"
+        >
+          <span className="material-symbols-outlined select-none">restart_alt</span>
+          <span>נקה הכל והתחל מחדש</span>
         </button>
       </div>
+
     </div>
   )
 }

@@ -132,33 +132,80 @@ After any correction from the user, immediately update `tasks/lessons.md`:
 # ─────────────────────────────────────────────────────────────
 
 ## Project: Electrical Panel Quote Automation System
-**Company:** י. סופר מערכות חשמל
-**Status:** Built & working (2026-03-05)
+**Company:** י. סופר מערכות חשמל בע"מ
+**Status:** Production web app — live, UI fully redesigned (2026-03-07)
 
-## To run the app:
-```bash
-cd "/Users/idanbadin/Desktop/Yoav Sofer/project"
-streamlit run app.py
-```
-App available at: http://localhost:8501
+## Live URLs
+- Frontend: https://yoavsofferapp.netlify.app (Netlify)
+- Backend: https://yoav-soffer-app-production.up.railway.app (Railway)
+- GitHub: https://github.com/IdanBadin/Yoav-Soffer-App
+
+## Stack
+- Frontend: React 19 + Vite 7 + TypeScript + Tailwind CSS v3
+- Backend: FastAPI Python (Railway, Root Dir: /backend)
+- Icons: Material Symbols Outlined (Google Fonts variable font)
+- Fonts: Heebo (UI/Hebrew) + IBM Plex Mono (numbers) — `.mono-font` class
 
 ## Architecture
-- `project/app.py` — Streamlit UI (RTL Hebrew, Heebo font, navy/blue design)
-- `project/utils/pdf_parser.py` — pdfplumber + Claude claude-sonnet-4-5 BOM extraction
-- `project/utils/sheets_client.py` — Google Sheets price lookup (3-tier: exact/mfg+catalog/fuzzy)
-- `project/utils/excel_generator.py` — openpyxl generates 2 Excel files as BytesIO
-- `project/.env` — ANTHROPIC_API_KEY + GOOGLE_SHEET_ID (never commit)
-- `project/config/google_credentials.json` — Google service account
+```
+frontend/  — React + Vite + TypeScript → Netlify
+  src/components/
+    Header.tsx         — Company PNG logo + name + nav tabs
+    UploadZone.tsx     — Drag-drop upload + "how it works"
+    ProjectForm.tsx    — Project metadata form
+    ProcessingView.tsx — Animated steps + terminal log
+    ResultsView.tsx    — Stats, table, downloads
+    PriceListView.tsx  — Full CRUD for Google Sheets prices
+  public/
+    logo.png           — Company logo (white bg, dark navy)
+    favicon.svg        — Lightning bolt in circle, electric blue
+  tailwind.config.js   — primary:#3b82f6, background-dark:#0f172a
+  vite.config.ts       — /api proxy → Railway (local dev only)
+backend/   — FastAPI Python (NEVER touch utils/)
+  utils/   — pdf_parser.py, sheets_client.py, excel_generator.py
+```
 
-## Two Excel outputs
-1. **הצעת מחיר** — 5 cols: סעיף|הערה|כמות|מחיר|סה"כ (Calibri Light, blue header)
-2. **כתב חלקים** — 8 cols: מס'|תיאור|מק"ט|יצרן|כמות|יחידה|מחיר יחידה|סה"כ
+## Design System (Tailwind)
+- Primary: #3b82f6 (Electric Blue)
+- Background: #0f172a (Deep Slate) | Surface: #1e293b
+- Success: #22c55e | Warning: #f59e0b | Error: #ef4444
+- Spacing: 8px grid — use gap-2/4/6/8 (never gap-1/3/5)
+- RTL: `<html lang="he" dir="rtl" class="dark">`
+- Mobile breakpoints: sm=640px, md=768px, lg=1024px
+- `.table-hide-mobile` — hides columns on <640px
 
-## Google Sheets schema
-catalog_number | item_name | unit_price | unit | manufacturer
-Tab should be named: מחירון
+## Responsive Rules
+- ResultsView table: hides מק"ט, יצרן, יחידה on mobile (header + cells)
+- PriceListView table: hides יצרן, יחידה on mobile (header + cells + edit row)
+- Header: logo always visible; company name text `hidden sm:flex`
+- Stats cards: icon must have `flex-shrink-0` + `gap-3` to prevent crowding
 
-## Known next steps
-- Fill Google Sheet with actual prices
-- Consider adding manual price-edit step in UI before Excel generation
-- sample_files/ contains reference PDFs and Excel templates
+## LOGIC IMMUTABILITY RULE
+Only JSX/CSS may be changed. Never touch:
+- fetch calls, state declarations, useEffect hooks
+- handleSubmit, handleFile, handleReset, handleEditSave, handleDelete, handleAddSave
+- parseError function, b64ToBytes, downloadExcel
+
+## Local Dev
+```bash
+cd frontend && npm run dev   # → http://localhost:5173
+# proxies /api → Railway backend automatically
+```
+
+## Backend API
+- POST /process — PDF → JSON + base64 Excel files
+- GET/POST/PUT/DELETE /prices — Google Sheets CRUD
+- POST /refresh-prices — reload price index
+
+## Railway env vars required
+ANTHROPIC_API_KEY, GOOGLE_SHEET_ID, GOOGLE_SHEET_NAME, GOOGLE_CREDENTIALS_B64, ALLOWED_ORIGINS
+
+## Google Sheets Price List
+- 258 rows, schema: catalog_number | item_name | unit_price | unit | manufacturer
+- Sheet ID: 1EckbrWL5jpqLf4Nczq7_b_Euvmq7bExNNQwut5BtXYA
+
+## Critical deployment notes
+- Railway Root Directory MUST be `/backend` in service Settings → Source
+- VITE_API_URL must be set in Netlify env vars BEFORE building (baked into bundle)
+- After any Railway env var change → redeploy triggers automatically
+- Footer year is dynamic: `{new Date().getFullYear()}` — never hardcode

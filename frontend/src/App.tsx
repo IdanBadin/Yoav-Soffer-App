@@ -105,7 +105,7 @@ function ErrorDisplay({ error, onClose }: { error: AppError; onClose: () => void
           </p>
         )}
       </div>
-      <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0">
+      <button onClick={onClose} className="flex items-center justify-center flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors">
         <span className="material-symbols-outlined text-[18px] select-none">close</span>
       </button>
     </div>

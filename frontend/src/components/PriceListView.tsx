@@ -25,16 +25,9 @@ export function PriceListView({ apiUrl }: Props) {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ row: number; name: string } | null>(null)
   const [sortCol, setSortCol] = useState<keyof PriceRow>('catalog_number')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-
-  useEffect(() => {
-    if (deleteConfirm === null) return
-    const dismiss = () => setDeleteConfirm(null)
-    const t = setTimeout(() => document.addEventListener('click', dismiss, { once: true }), 0)
-    return () => { clearTimeout(t); document.removeEventListener('click', dismiss) }
-  }, [deleteConfirm])
 
   const fetchPrices = useCallback(async () => {
     setLoading(true)
@@ -87,17 +80,21 @@ export function PriceListView({ apiUrl }: Props) {
     }
   }
 
-  const handleDelete = async (row: number, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (deleteConfirm !== row) { setDeleteConfirm(row); return }
+  const handleDelete = (row: PriceRow) => {
+    setDeleteModal({ row: row.row, name: row.item_name || row.catalog_number })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal) return
     setSaving(true)
     try {
-      const res = await fetch(`${apiUrl}/prices/${row}`, { method: 'DELETE' })
+      const res = await fetch(`${apiUrl}/prices/${deleteModal.row}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('שגיאה במחיקה')
       await fetchPrices()
-      setDeleteConfirm(null)
+      setDeleteModal(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'שגיאה במחיקה')
+      setDeleteModal(null)
     } finally {
       setSaving(false)
     }
@@ -213,7 +210,7 @@ export function PriceListView({ apiUrl }: Props) {
             <span className="material-symbols-outlined text-[18px] select-none">error</span>
             {error}
           </span>
-          <button onClick={() => setError(null)} className="text-slate-400 hover:text-slate-200 transition-colors">
+          <button onClick={() => setError(null)} className="flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors">
             <span className="material-symbols-outlined text-[18px] select-none">close</span>
           </button>
         </div>
@@ -350,13 +347,13 @@ export function PriceListView({ apiUrl }: Props) {
                               <button
                                 onClick={handleEditSave}
                                 disabled={saving}
-                                className="bg-primary text-background-dark font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-110 transition-all disabled:opacity-50"
+                                className="flex items-center justify-center bg-primary text-background-dark font-bold px-3 py-1.5 rounded-lg text-xs hover:brightness-110 transition-all disabled:opacity-50"
                               >
                                 {saving ? '...' : 'שמור'}
                               </button>
                               <button
                                 onClick={() => setEditingRow(null)}
-                                className="border border-slate-600 text-slate-300 px-2 py-1.5 rounded-lg text-xs hover:bg-slate-700/30 transition-all"
+                                className="flex items-center justify-center border border-slate-600 text-slate-300 px-2 py-1.5 rounded-lg text-xs hover:bg-slate-700/30 transition-all"
                               >
                                 <span className="material-symbols-outlined text-[14px] select-none">close</span>
                               </button>
@@ -382,27 +379,16 @@ export function PriceListView({ apiUrl }: Props) {
                               <button
                                 onClick={() => handleEditStart(row)}
                                 title="ערוך"
-                                className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                className="flex items-center justify-center p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                               >
                                 <span className="material-symbols-outlined text-[18px] select-none">edit</span>
                               </button>
                               <button
-                                onClick={(e) => handleDelete(row.row, e)}
-                                title={deleteConfirm === row.row ? 'לחץ שוב לאישור' : 'מחק'}
-                                className={`p-2 rounded-lg transition-all flex items-center gap-1 text-xs ${
-                                  deleteConfirm === row.row
-                                    ? 'bg-error/10 text-error border border-error/30 px-3 font-bold'
-                                    : 'text-slate-400 hover:text-error hover:bg-error/10'
-                                }`}
+                                onClick={() => handleDelete(row)}
+                                title="מחק"
+                                className="flex items-center justify-center p-2 rounded-lg transition-all text-slate-400 hover:text-error hover:bg-error/10"
                               >
-                                {deleteConfirm === row.row ? (
-                                  <>
-                                    <span className="material-symbols-outlined text-[14px] select-none">check</span>
-                                    אשר
-                                  </>
-                                ) : (
-                                  <span className="material-symbols-outlined text-[18px] select-none">delete</span>
-                                )}
+                                <span className="material-symbols-outlined text-[18px] select-none">delete</span>
                               </button>
                             </div>
                           </td>
@@ -425,6 +411,36 @@ export function PriceListView({ apiUrl }: Props) {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1e293b] border border-error/30 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-error text-2xl select-none">warning</span>
+              <h2 className="text-lg font-bold text-slate-100">אישור מחיקה</h2>
+            </div>
+            <p className="text-slate-300 text-sm mb-1">האם אתה בטוח שברצונך למחוק את הפריט:</p>
+            <p className="text-primary font-bold text-sm mb-6 truncate">{deleteModal.name}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="flex items-center justify-center px-4 py-2 text-sm border border-slate-600 text-slate-300 rounded-xl hover:bg-slate-700/30 transition-all"
+              >
+                בטל
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-error text-white rounded-xl hover:brightness-110 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[16px] select-none">delete</span>
+                {saving ? 'מוחק...' : 'מחק'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

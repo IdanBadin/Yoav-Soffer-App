@@ -34,4 +34,5 @@ export interface PriceRow {
   unit_price: number
   unit: string
   manufacturer: string
+  category: string
 }

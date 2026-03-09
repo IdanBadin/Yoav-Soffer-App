@@ -11,6 +11,7 @@ const EMPTY_ROW: Omit<PriceRow, 'row'> = {
   unit_price: 0,
   unit: "יח'",
   manufacturer: '',
+  category: '',
 }
 
 export function PriceListView({ apiUrl }: Props) {
@@ -61,7 +62,7 @@ export function PriceListView({ apiUrl }: Props) {
 
   const handleEditStart = (row: PriceRow) => {
     setEditingRow(row.row)
-    setEditData({ catalog_number: row.catalog_number, item_name: row.item_name, unit_price: row.unit_price, unit: row.unit, manufacturer: row.manufacturer })
+    setEditData({ catalog_number: row.catalog_number, item_name: row.item_name, unit_price: row.unit_price, unit: row.unit, manufacturer: row.manufacturer, category: row.category || '' })
     setIsAdding(false)
   }
 
@@ -123,15 +124,19 @@ export function PriceListView({ apiUrl }: Props) {
   const stats = useMemo(() => ({
     total: rows.length,
     withPrice: rows.filter(r => r.unit_price > 0).length,
-    suppliers: new Set(rows.map(r => r.manufacturer).filter(Boolean)).size,
+    categories: new Set(rows.map(r => r.category).filter(Boolean)).size,
     totalValue: rows.reduce((s, r) => s + r.unit_price, 0),
   }), [rows])
+
+  const uniqueCategories = useMemo(() =>
+    [...new Set(rows.map(r => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'))
+  , [rows])
 
   const filtered = rows
     .filter(r => {
       if (!search) return true
       const q = search.toLowerCase()
-      return r.catalog_number.toLowerCase().includes(q) || r.item_name.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q)
+      return r.catalog_number.toLowerCase().includes(q) || r.item_name.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q) || (r.category || '').toLowerCase().includes(q)
     })
     .sort((a, b) => {
       const av = a[sortCol]; const bv = b[sortCol]
@@ -139,9 +144,35 @@ export function PriceListView({ apiUrl }: Props) {
       return sortDir === 'asc' ? cmp : -cmp
     })
 
+  // When search is active: flat list. When not searching: group by category.
+  type ViewEntry = { type: 'header'; category: string } | { type: 'item'; row: PriceRow }
+  const groupedView = useMemo((): ViewEntry[] => {
+    if (search) return filtered.map(row => ({ type: 'item', row }))
+
+    const seen = new Set<string>()
+    const catOrder: string[] = []
+    for (const row of filtered) {
+      const cat = row.category || ''
+      if (!seen.has(cat)) { seen.add(cat); catOrder.push(cat) }
+    }
+    const groups: Record<string, PriceRow[]> = {}
+    for (const row of filtered) {
+      const cat = row.category || ''
+      if (!groups[cat]) groups[cat] = []
+      groups[cat].push(row)
+    }
+    const result: ViewEntry[] = []
+    for (const cat of catOrder) {
+      if (cat) result.push({ type: 'header', category: cat })
+      for (const row of groups[cat]) result.push({ type: 'item', row })
+    }
+    return result
+  }, [filtered, search])
+
   const FIELD_LABELS: Record<string, string> = {
     catalog_number: 'מק"ט',
     item_name: 'שם מוצר',
+    category: 'קטגוריה',
     manufacturer: 'יצרן',
     unit: 'יחידה',
     unit_price: 'מחיר',
@@ -189,7 +220,7 @@ export function PriceListView({ apiUrl }: Props) {
           {[
             { label: 'סה"כ פריטים', value: stats.total.toLocaleString('he-IL'), icon: 'category', color: 'text-primary' },
             { label: 'עם מחיר מעודכן', value: stats.withPrice.toLocaleString('he-IL'), icon: 'sell', color: 'text-success' },
-            { label: 'ספקים פעילים', value: stats.suppliers.toLocaleString('he-IL'), icon: 'local_shipping', color: 'text-slate-300' },
+            { label: 'קטגוריות', value: stats.categories.toLocaleString('he-IL'), icon: 'folder_open', color: 'text-slate-300' },
             { label: 'ערך מלאי כולל', value: `₪${stats.totalValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: 'payments', color: 'text-warning' },
           ].map(s => (
             <div key={s.label} className="flex flex-col gap-2 p-4 rounded-xl border border-primary/10 bg-primary/5 hover:border-primary/30 transition-colors">
@@ -223,7 +254,7 @@ export function PriceListView({ apiUrl }: Props) {
         </div>
         <input
           type="text"
-          placeholder='חיפוש לפי מק״ט, שם מוצר, יצרן...'
+          placeholder='חיפוש לפי מק״ט, שם מוצר, יצרן, קטגוריה...'
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full bg-primary/5 border border-primary/10 rounded-xl py-3.5 pr-12 pl-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
@@ -234,23 +265,42 @@ export function PriceListView({ apiUrl }: Props) {
       {isAdding && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
           <p className="font-bold text-sm text-primary">הוספת פריט חדש</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {(['catalog_number', 'item_name', 'manufacturer', 'unit', 'unit_price'] as const).map(field => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {(['catalog_number', 'item_name', 'category', 'manufacturer', 'unit', 'unit_price'] as const).map(field => (
               <div key={field}>
                 <label className="block text-xs text-slate-400 uppercase tracking-wider mb-1.5">
                   {FIELD_LABELS[field]}
                 </label>
-                <input
-                  type={field === 'unit_price' ? 'number' : 'text'}
-                  value={field === 'unit_price' ? (newRowData.unit_price === 0 ? '' : newRowData.unit_price) : newRowData[field]}
-                  placeholder={field === 'unit_price' ? '0' : undefined}
-                  onChange={e => setNewRowData(p => ({
-                    ...p,
-                    [field]: field === 'unit_price' ? parseFloat(e.target.value) || 0 : e.target.value,
-                  }))}
-                  className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary text-sm"
-                  style={field === 'unit_price' ? { direction: 'ltr', textAlign: 'left' } : {}}
-                />
+                {field === 'unit_price' ? (
+                  <input
+                    type="number"
+                    value={newRowData.unit_price === 0 ? '' : newRowData.unit_price}
+                    placeholder="0"
+                    onChange={e => setNewRowData(p => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))}
+                    className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary text-sm"
+                    style={{ direction: 'ltr', textAlign: 'left' }}
+                  />
+                ) : field === 'category' ? (
+                  <>
+                    <input
+                      list="category-options"
+                      value={newRowData.category}
+                      onChange={e => setNewRowData(p => ({ ...p, category: e.target.value }))}
+                      className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary text-sm"
+                      placeholder="בחר או הקלד..."
+                    />
+                    <datalist id="category-options">
+                      {uniqueCategories.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    value={newRowData[field]}
+                    onChange={e => setNewRowData(p => ({ ...p, [field]: e.target.value }))}
+                    className="w-full bg-background-dark border border-slate-700 rounded-lg py-2 px-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary text-sm"
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -294,6 +344,7 @@ export function PriceListView({ apiUrl }: Props) {
                   {([
                     { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט',    hide: false },
                     { col: 'item_name'      as keyof PriceRow, label: 'שם מוצר', hide: false },
+                    { col: 'category'       as keyof PriceRow, label: 'קטגוריה', hide: true  },
                     { col: 'manufacturer'   as keyof PriceRow, label: 'יצרן',    hide: true  },
                     { col: 'unit'           as keyof PriceRow, label: 'יחידה',   hide: true  },
                     { col: 'unit_price'     as keyof PriceRow, label: 'מחיר',    hide: false },
@@ -315,7 +366,21 @@ export function PriceListView({ apiUrl }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary/5">
-                {filtered.map(row => {
+                {groupedView.map((entry, idx) => {
+                  if (entry.type === 'header') {
+                    return (
+                      <tr key={`cat-${entry.category}-${idx}`} className="bg-slate-800/60 border-y border-primary/20">
+                        <td colSpan={7} className="px-5 py-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary/70">
+                            <span className="material-symbols-outlined text-[14px] select-none">folder_open</span>
+                            {entry.category}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  const row = entry.row
                   const isEditing = editingRow === row.row
                   return (
                     <tr
@@ -324,8 +389,8 @@ export function PriceListView({ apiUrl }: Props) {
                     >
                       {isEditing ? (
                         <>
-                          {(['catalog_number', 'item_name', 'manufacturer', 'unit'] as const).map(f => (
-                            <td key={f} className={`px-3 py-2${f === 'manufacturer' || f === 'unit' ? ' table-hide-mobile' : ''}`}>
+                          {(['catalog_number', 'item_name', 'category', 'manufacturer', 'unit'] as const).map(f => (
+                            <td key={f} className={`px-3 py-2${f === 'category' || f === 'manufacturer' || f === 'unit' ? ' table-hide-mobile' : ''}`}>
                               <input
                                 className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
                                 value={editData[f]}
@@ -364,6 +429,7 @@ export function PriceListView({ apiUrl }: Props) {
                         <>
                           <td className="px-5 py-4 mono-font text-sm font-bold text-primary">{row.catalog_number || '—'}</td>
                           <td className="px-5 py-4 text-sm font-medium text-slate-200">{row.item_name || '—'}</td>
+                          <td className="px-5 py-4 text-sm text-slate-300 table-hide-mobile">{row.category || '—'}</td>
                           <td className="px-5 py-4 text-sm text-slate-400 table-hide-mobile">{row.manufacturer || '—'}</td>
                           <td className="px-5 py-4 text-sm table-hide-mobile">
                             <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">{row.unit}</span>

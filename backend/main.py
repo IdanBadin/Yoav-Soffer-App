@@ -28,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 _price_index: Optional[dict] = None
+_price_records_raw: Optional[list] = None  # Original records for semantic matching
 
 READ_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
@@ -70,6 +71,7 @@ def _get_worksheet(write: bool = False):
 
 
 def _load_price_index() -> Optional[dict]:
+    global _price_records_raw
     creds_path = _get_credentials_path()
     sheet_id = os.getenv("GOOGLE_SHEET_ID", "")
     sheet_name = os.getenv("GOOGLE_SHEET_NAME", "מחירון")
@@ -78,12 +80,99 @@ def _load_price_index() -> Optional[dict]:
         return None
     try:
         records = load_price_sheet(creds_path, sheet_id, sheet_name)
+        _price_records_raw = records
         index = build_price_index(records)
         logger.info(f"Price index loaded: {len(records)} records")
         return index
     except Exception as e:
         logger.error(f"Failed to load price sheet: {e}")
         return None
+
+
+def _semantic_match_unmatched(
+    unmatched: list,   # [(original_index, component), ...]
+    raw_records: list,
+    api_key: str,
+) -> dict:            # {original_index: {price, unit, match_type, price_found}}
+    """Send unmatched components to Claude for cross-language semantic matching."""
+    import json, re
+
+    # Build compact price list string
+    price_lines = []
+    for i, r in enumerate(raw_records):
+        cat = r.get("catalog_number", "") or ""
+        name = r.get("item_name", "") or ""
+        category = r.get("category", "") or ""
+        price = r.get("unit_price", 0) or 0
+        price_lines.append(f'[{i}] cat:"{cat}" "{name}" [{category}] ₪{price}')
+    price_list_str = "\n".join(price_lines)
+
+    # Build compact components string
+    comp_lines = []
+    for local_i, (orig_i, c) in enumerate(unmatched):
+        cat = c.get("catalog_number", "") or ""
+        mfg = c.get("manufacturer", "") or ""
+        desc = c.get("description", "") or ""
+        comp_lines.append(f'[{local_i}] cat:"{cat}" mfg:"{mfg}" "{desc}"')
+    comp_str = "\n".join(comp_lines)
+
+    prompt = f"""You are an expert in electrical panels and components used in Israel.
+
+Match each schematic component to the best price list item.
+Component names may be in English; price list names are in Hebrew.
+Common mappings: Circuit Breaker=מאמת, Residual Current=פחת/מאזם, Contactor=מגע, Motor Protection=הגנת מנוע, Selector=בורר, Timer=טיימר, Relay=ממסר, Capacitor=קבל, Current Transformer=משנז"ר, Surge Protection=כולא ברק
+
+PRICE LIST (index | catalog | name | category | price):
+{price_list_str}
+
+COMPONENTS TO MATCH (index | catalog | manufacturer | description):
+{comp_str}
+
+Rules:
+1. Match by component TYPE + SPECIFICATIONS (poles, amperage, mA rating)
+2. Only return matches with HIGH confidence (>85%)
+3. For no confident match → use -1
+
+Return ONLY valid JSON, no text:
+{{"m": [[0, 15], [1, 22], [2, -1]]}}
+where each pair is [component_index, price_list_index] (-1 = no match)"""
+
+    client = _anthropic.Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = response.content[0].text.strip()
+
+    # Extract JSON — handle markdown code blocks
+    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if not json_match:
+        raise ValueError(f"No JSON found in Claude response: {raw[:200]}")
+    data = json.loads(json_match.group())
+
+    result = {}
+    for pair in data.get("m", []):
+        local_i, price_list_i = pair[0], pair[1]
+        if price_list_i == -1:
+            continue
+        if local_i < 0 or local_i >= len(unmatched):
+            continue
+        if price_list_i < 0 or price_list_i >= len(raw_records):
+            continue
+        orig_i = unmatched[local_i][0]
+        rec = raw_records[price_list_i]
+        try:
+            price_val = float(str(rec.get("unit_price", 0) or 0).replace(",", "."))
+        except (ValueError, TypeError):
+            price_val = 0.0
+        result[orig_i] = {
+            "price": price_val,
+            "unit": str(rec.get("unit", "יח'") or "יח'"),
+            "match_type": "semantic",
+            "price_found": True,
+        }
+    return result
 
 
 @asynccontextmanager
@@ -111,6 +200,7 @@ class PriceRecord(BaseModel):
     unit_price: float = 0.0
     unit: str = "יח'"
     manufacturer: str = ""
+    category: str = ""
 
 
 @app.get("/health")
@@ -153,6 +243,7 @@ async def get_prices():
                 "unit_price": price_val,
                 "unit": str(r.get("unit", "יח'") or "יח'"),
                 "manufacturer": str(r.get("manufacturer", "") or ""),
+                "category": str(r.get("category", "") or ""),
             })
         return {"records": result, "count": len(result)}
     except HTTPException:
@@ -175,6 +266,7 @@ async def update_price(row: int, data: PriceRecord):
             "unit_price": data.unit_price,
             "unit": data.unit,
             "manufacturer": data.manufacturer,
+            "category": data.category,
         }
         cell_updates = []
         for field, col in col_map.items():
@@ -204,6 +296,7 @@ async def add_price(data: PriceRecord):
             data.unit_price,
             data.unit,
             data.manufacturer,
+            data.category,
         ])
         return {"status": "ok"}
     except HTTPException:
@@ -282,6 +375,17 @@ async def process(
                 {**c, "price": 0.0, "unit": "יח'", "match_type": "none", "price_found": False}
                 for c in all_components
             ]
+
+        # Step 4: Semantic matching for still-unmatched components
+        unmatched = [(i, c) for i, c in enumerate(priced) if not c["price_found"]]
+        if unmatched and _price_records_raw and api_key:
+            try:
+                semantic = _semantic_match_unmatched(unmatched, _price_records_raw, api_key)
+                for idx, match in semantic.items():
+                    priced[idx] = {**priced[idx], **match}
+                logger.info(f"Semantic matching resolved {len(semantic)} of {len(unmatched)} unmatched components")
+            except Exception as e:
+                logger.warning(f"Semantic matching skipped: {e}")
 
         excel_quote_bytes = generate_quote(priced, project_name, manager_name, date)
         excel_parts_bytes = generate_parts_list(priced, project_name, manager_name, date)

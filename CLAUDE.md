@@ -133,7 +133,7 @@ After any correction from the user, immediately update `tasks/lessons.md`:
 
 ## Project: Electrical Panel Quote Automation System
 **Company:** י. סופר מערכות חשמל בע"מ
-**Status:** Production web app — live, UI fully redesigned (2026-03-07)
+**Status:** Production web app — live, UI fully redesigned + semantic matching added (2026-03-09)
 
 ## Live URLs
 - Frontend: https://yoavsofferapp.netlify.app (Netlify)
@@ -155,15 +155,35 @@ frontend/  — React + Vite + TypeScript → Netlify
     ProjectForm.tsx    — Project metadata form
     ProcessingView.tsx — Animated steps + terminal log
     ResultsView.tsx    — Stats, table, downloads
-    PriceListView.tsx  — Full CRUD for Google Sheets prices
+    PriceListView.tsx  — Full CRUD for Google Sheets prices (with category grouping)
   public/
     logo.png           — Company logo (white bg, dark navy)
     favicon.svg        — Lightning bolt in circle, electric blue
   tailwind.config.js   — primary:#3b82f6, background-dark:#0f172a
   vite.config.ts       — /api proxy → Railway (local dev only)
 backend/   — FastAPI Python (NEVER touch utils/)
-  utils/   — pdf_parser.py, sheets_client.py, excel_generator.py
+  main.py              — ALL custom logic lives here (lifespan, CRUD, /process, semantic matching)
+  utils/   — pdf_parser.py, sheets_client.py, excel_generator.py (NEVER TOUCH)
+  scripts/ — import_pricelist.py (one-time Excel import utility)
 ```
+
+## Price Matching Pipeline (4 steps, in order)
+The `/process` endpoint matches PDF components to prices in 4 steps:
+1. **Exact catalog match** — catalog_number exact string match
+2. **Normalized catalog match** — stripped/lowercased catalog match
+3. **Fuzzy description match** — difflib, cutoff=0.7 (fails cross-language)
+4. **Semantic match (NEW)** — Claude API batch call for unmatched components
+   - Function: `_semantic_match_unmatched()` in `backend/main.py`
+   - One API call per PDF, only when step 1-3 leaves unmatched items
+   - Model: `claude-sonnet-4-5`, returns `match_type: "semantic"`
+   - Graceful fallback: any exception → `{}`, main flow never breaks
+   - Globals: `_price_records_raw` (raw list) + `_price_index` (built index)
+
+## Google Sheets Price List
+- 253 rows (as of 2026-03-09), schema: catalog_number | item_name | unit_price | unit | manufacturer | category
+- Sheet ID: 1EckbrWL5jpqLf4Nczq7_b_Euvmq7bExNNQwut5BtXYA
+- **category field added** — 35 categories imported from Excel מחירון לוחות י.סופר 10.2025.xlsx
+- Import script: `scripts/import_pricelist.py` (one-time use, do not re-run without backing up sheet)
 
 ## Design System (Tailwind)
 - Primary: #3b82f6 (Electric Blue)
@@ -181,31 +201,39 @@ backend/   — FastAPI Python (NEVER touch utils/)
 - Stats cards: icon must have `flex-shrink-0` + `gap-3` to prevent crowding
 
 ## LOGIC IMMUTABILITY RULE
-Only JSX/CSS may be changed. Never touch:
+Only JSX/CSS may be changed in frontend. Never touch:
 - fetch calls, state declarations, useEffect hooks
 - handleSubmit, handleFile, handleReset, handleEditSave, handleDelete, handleAddSave
 - parseError function, b64ToBytes, downloadExcel
 
 ## Local Dev
 ```bash
-cd frontend && npm run dev   # → http://localhost:5173
-# proxies /api → Railway backend automatically
+# Kill stale backend if port busy:
+lsof -ti :8000 | xargs kill -9
+
+# Backend (needed for semantic matching + price CRUD):
+cd backend && uvicorn main:app --port 8000 --reload
+
+# Frontend:
+cd frontend && npm run dev   # → usually http://localhost:5175 (5173/5174 often in use)
+# frontend/.env.local already set to VITE_API_URL=http://localhost:8000
 ```
 
 ## Backend API
-- POST /process — PDF → JSON + base64 Excel files
+- POST /process — PDF → JSON + base64 Excel files (4-step price matching)
 - GET/POST/PUT/DELETE /prices — Google Sheets CRUD
-- POST /refresh-prices — reload price index
+- POST /refresh-prices — reload price index (also refreshes _price_records_raw)
 
 ## Railway env vars required
 ANTHROPIC_API_KEY, GOOGLE_SHEET_ID, GOOGLE_SHEET_NAME, GOOGLE_CREDENTIALS_B64, ALLOWED_ORIGINS
-
-## Google Sheets Price List
-- 258 rows, schema: catalog_number | item_name | unit_price | unit | manufacturer
-- Sheet ID: 1EckbrWL5jpqLf4Nczq7_b_Euvmq7bExNNQwut5BtXYA
 
 ## Critical deployment notes
 - Railway Root Directory MUST be `/backend` in service Settings → Source
 - VITE_API_URL must be set in Netlify env vars BEFORE building (baked into bundle)
 - After any Railway env var change → redeploy triggers automatically
 - Footer year is dynamic: `{new Date().getFullYear()}` — never hardcode
+
+## Next Steps (as of 2026-03-09)
+- [ ] Test semantic matching with real PDF on local → check logs for "Semantic matching resolved X of Y"
+- [ ] Spot-check matched items for correctness (right product + right price)
+- [ ] Monitor production Railway logs after deploy for semantic matching performance

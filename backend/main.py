@@ -470,7 +470,12 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         # Strip markdown code fences if present
         text = re.sub(r"^```[a-z]*\n?", "", text)
         text = re.sub(r"\n?```$", "", text)
-        return json.loads(text)
+        # Extract just the JSON array — Claude sometimes appends explanatory text
+        json_match = re.search(r'\[.*\]', text, re.DOTALL)
+        if not json_match:
+            logger.warning(f"Vision page {page_num}: no JSON array found in response")
+            return []
+        return json.loads(json_match.group())
     except Exception as e:
         logger.warning(f"Vision page {page_num} extraction failed: {e}")
         return []

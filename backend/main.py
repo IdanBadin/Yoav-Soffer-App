@@ -4,12 +4,17 @@ Endpoints: POST /process, GET/POST/PUT/DELETE /prices, GET /health, POST /refres
 """
 
 import base64
+import io
+import json
 import logging
 import os
+import re
 import tempfile
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+
+from pdf2image import convert_from_bytes as _pdf2image
 
 import anthropic as _anthropic
 import gspread
@@ -433,6 +438,161 @@ def _process_boq_flow(
     }
 
 
+def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
+    """Send a single PDF page image to Claude Vision and return extracted components."""
+    b64 = base64.standard_b64encode(img_bytes).decode()
+    prompt = (
+        "You are analyzing an AutoCAD electrical panel (לוח חשמל) drawing.\n"
+        "Extract ALL electrical components visible in this drawing.\n"
+        "For each component return a JSON object with these exact keys:\n"
+        '  "description": string (use the text as shown in the drawing, Hebrew or English)\n'
+        '  "qty": number (integer, default 1 if not shown)\n'
+        '  "unit": string (use "יח\'" unless a different unit is shown)\n'
+        '  "catalog": string (catalog/model number if visible, else "")\n\n'
+        "Return ONLY a JSON array. No explanation, no markdown fences. Example:\n"
+        '[{"description":"מפסק אוטומטי 3P 63A","qty":2,"unit":"יח\'","catalog":""},\n'
+        ' {"description":"מגן מנוע 11-16A","qty":1,"unit":"יח\'","catalog":"GV2ME16"}]\n\n'
+        "If no components are visible, return []."
+    )
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        text = msg.content[0].text.strip()
+        # Strip markdown code fences if present
+        text = re.sub(r"^```[a-z]*\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+        return json.loads(text)
+    except Exception as e:
+        logger.warning(f"Vision page {page_num} extraction failed: {e}")
+        return []
+
+
+def _process_pdf_vision(
+    file_bytes: bytes,
+    price_index: Optional[dict],
+    price_records_raw: Optional[list],
+    api_key: str,
+    project_name: str,
+    manager_name: str,
+    date: str,
+) -> dict:
+    """
+    Vision API PDF pipeline: pdf2image → Claude Vision per page → dedup → price match.
+    Returns same shape as the old PDF /process response.
+    """
+    client = _anthropic.Anthropic(api_key=api_key)
+
+    # Convert PDF pages to PNG images at 150 DPI
+    try:
+        images = _pdf2image(file_bytes, dpi=150, fmt="png")
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"שגיאה בפענוח PDF: {e}")
+
+    page_count = len(images)
+    logger.info(f"Vision PDF: {page_count} page(s) converting...")
+
+    # Claude Vision max image dimension is 8000px — resize if needed
+    MAX_DIM = 7500
+
+    # Extract components from each page
+    all_items: list = []
+    for i, img in enumerate(images):
+        w, h = img.size
+        if max(w, h) > MAX_DIM:
+            scale = MAX_DIM / max(w, h)
+            img = img.resize((int(w * scale), int(h * scale)))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        items = _vision_extract_page(client, buf.getvalue(), i + 1)
+        logger.info(f"  Page {i + 1}: {len(items)} components extracted")
+        all_items.extend(items)
+
+    # Deduplicate: merge items with identical description by summing qty
+    merged: dict = {}
+    for item in all_items:
+        key = (item.get("description") or "").strip().lower()
+        if not key:
+            continue
+        if key in merged:
+            merged[key]["qty"] = merged[key].get("qty", 1) + item.get("qty", 1)
+        else:
+            merged[key] = {
+                "description": item.get("description", ""),
+                "qty":         item.get("qty", 1),
+                "unit":        item.get("unit", "יח'"),
+                "catalog":     item.get("catalog", ""),
+            }
+
+    components_raw = list(merged.values())
+    logger.info(f"Vision PDF: {len(components_raw)} unique components after dedup")
+
+    if not components_raw:
+        raise HTTPException(
+            status_code=422,
+            detail="לא זוהו רכיבים בשרטוט. ודא שהקובץ הנכון הועלה ושהוא מכיל רשימת ציוד."
+        )
+
+    # Build format expected by match_prices()
+    comps_for_match = [
+        {
+            "description":    c["description"],
+            "catalog_number": c["catalog"],
+            "manufacturer":   "",
+            "qty":            c["qty"],
+            "unit":           c["unit"],
+            "user1":          "",
+        }
+        for c in components_raw
+    ]
+
+    # Steps 1-3: exact + normalized + fuzzy
+    if price_index:
+        matched = match_prices(comps_for_match, price_index)
+    else:
+        matched = [
+            {**c, "price": 0.0, "match_type": "none", "price_found": False}
+            for c in comps_for_match
+        ]
+
+    # Step 4: semantic matching for unmatched
+    unmatched = [(i, c) for i, c in enumerate(matched) if not c.get("price_found")]
+    if unmatched and price_records_raw and api_key:
+        try:
+            semantic = _semantic_match_unmatched(unmatched, price_records_raw, api_key)
+            for idx, upd in semantic.items():
+                matched[idx] = {**matched[idx], **upd}
+            logger.info(f"Vision semantic matched {len(semantic)} of {len(unmatched)} unmatched")
+        except Exception as e:
+            logger.warning(f"Vision semantic matching skipped: {e}")
+
+    # Restore qty/unit from original extraction (match_prices may overwrite unit)
+    for i, raw in enumerate(components_raw):
+        matched[i]["qty"]  = raw["qty"]
+        matched[i]["unit"] = matched[i].get("unit") or raw["unit"]
+
+    excel_quote_bytes = generate_quote(matched, project_name, manager_name, date)
+    excel_parts_bytes = generate_parts_list(matched, project_name, manager_name, date)
+
+    matched_count = sum(1 for c in matched if c.get("price_found"))
+    logger.info(f"Vision PDF: {matched_count}/{len(matched)} components priced")
+
+    return {
+        "components": matched,
+        "page_count":  page_count,
+        "excel_quote": base64.b64encode(excel_quote_bytes).decode("utf-8"),
+        "excel_parts": base64.b64encode(excel_parts_bytes).decode("utf-8"),
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _price_index
@@ -631,50 +791,13 @@ async def process(
         if is_xlsx:
             logger.info(f"Processing BoQ Excel: {file.filename} ({len(content) / 1024:.0f} KB)")
             return _process_boq_flow(content, _price_index, _price_records_raw, api_key)
-        # ── PDF flow continues below ──────────────────────────────────────────
 
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
-        logger.info(f"Processing PDF: {file.filename} ({len(content) / 1024:.0f} KB)")
-        result = parse_pdf(tmp_path, api_key)
-        all_components = result["components"] + result["flagged"]
-
-        if not all_components:
-            raise HTTPException(
-                status_code=422,
-                detail="לא זוהו רכיבי חשמל בשרטוט. ודא שהקובץ הנכון הועלה ושהוא מכיל רשימת ציוד."
-            )
-
-        if _price_index:
-            priced = match_prices(all_components, _price_index)
-        else:
-            priced = [
-                {**c, "price": 0.0, "unit": "יח'", "match_type": "none", "price_found": False}
-                for c in all_components
-            ]
-
-        # Step 4: Semantic matching for still-unmatched components
-        unmatched = [(i, c) for i, c in enumerate(priced) if not c["price_found"]]
-        if unmatched and _price_records_raw and api_key:
-            try:
-                semantic = _semantic_match_unmatched(unmatched, _price_records_raw, api_key)
-                for idx, match in semantic.items():
-                    priced[idx] = {**priced[idx], **match}
-                logger.info(f"Semantic matching resolved {len(semantic)} of {len(unmatched)} unmatched components")
-            except Exception as e:
-                logger.warning(f"Semantic matching skipped: {e}")
-
-        excel_quote_bytes = generate_quote(priced, project_name, manager_name, date)
-        excel_parts_bytes = generate_parts_list(priced, project_name, manager_name, date)
-
-        return {
-            "components": priced,
-            "page_count": result["page_count"],
-            "excel_quote": base64.b64encode(excel_quote_bytes).decode("utf-8"),
-            "excel_parts": base64.b64encode(excel_parts_bytes).decode("utf-8"),
-        }
+        # ── PDF → Vision API flow ─────────────────────────────────────────────
+        logger.info(f"Processing PDF (Vision): {file.filename} ({len(content) / 1024:.0f} KB)")
+        return _process_pdf_vision(
+            content, _price_index, _price_records_raw, api_key,
+            project_name, manager_name, date,
+        )
 
     except HTTPException:
         raise

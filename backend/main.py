@@ -3,6 +3,7 @@ FastAPI backend — thin wrapper around existing utils.
 Endpoints: POST /process, GET/POST/PUT/DELETE /prices, GET /health, POST /refresh-prices
 """
 
+import asyncio
 import base64
 import io
 import json
@@ -145,16 +146,29 @@ where each pair is [component_index, price_list_index] (-1 = no match)"""
     client = _anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-sonnet-4-5",
-        max_tokens=1024,
+        max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = response.content[0].text.strip()
 
-    # Extract JSON — handle markdown code blocks
-    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if not json_match:
-        raise ValueError(f"No JSON found in Claude response: {raw[:200]}")
-    data = json.loads(json_match.group())
+    # Use raw_decode to find the first JSON object containing "m" key.
+    # raw_decode parses exactly ONE value and stops, so trailing text / extra
+    # objects never bleed into the parse (avoids "Extra data" JSONDecodeError).
+    decoder = json.JSONDecoder()
+    data = None
+    pos = 0
+    while pos < len(raw):
+        try:
+            brace_pos = raw.index('{', pos)
+            candidate, _ = decoder.raw_decode(raw[brace_pos:])
+            if isinstance(candidate, dict) and "m" in candidate:
+                data = candidate
+                break
+            pos = brace_pos + 1
+        except (ValueError, json.JSONDecodeError):
+            break
+    if data is None:
+        raise ValueError(f"No JSON with 'm' key found in Claude response: {raw[:200]}")
 
     result = {}
     for pair in data.get("m", []):
@@ -442,17 +456,24 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
     """Send a single PDF page image to Claude Vision and return extracted components."""
     b64 = base64.standard_b64encode(img_bytes).decode()
     prompt = (
-        "You are analyzing an AutoCAD electrical panel (לוח חשמל) drawing.\n"
-        "Extract ALL electrical components visible in this drawing.\n"
-        "For each component return a JSON object with these exact keys:\n"
-        '  "description": string (use the text as shown in the drawing, Hebrew or English)\n'
-        '  "qty": number (integer, default 1 if not shown)\n'
-        '  "unit": string (use "יח\'" unless a different unit is shown)\n'
-        '  "catalog": string (catalog/model number if visible, else "")\n\n'
-        "Return ONLY a JSON array. No explanation, no markdown fences. Example:\n"
+        "You are analyzing an AutoCAD electrical panel (לוח חשמל) drawing.\n\n"
+        "Extract ONLY purchasable electrical components — physical items that appear in a bill of materials.\n\n"
+        "INCLUDE: circuit breakers (מפסק), contactors (מגען), motor protection relays (מגן מנוע), "
+        "residual current devices (מפסק פחת/מגן מנוע), terminals (מסוף), busbars (שפה/בסבר), "
+        "meters (מד), pilot lights (נורה), selector switches (בורר), timers (טיימר), "
+        "transformers (שנאי/טרנספורמטור), fuses (פיוז), cables (כבל), surge protectors (מוגן ברק), "
+        "enclosures (ארון חשמל/לוח), din rails, cable ducts (מרזב).\n\n"
+        "EXCLUDE: specifications text, dimensions, weights, standards (IEC/EN), notes, dates, "
+        "temperature/IP ratings, company names, drawing titles, section headers, calculations.\n\n"
+        "For each component return a JSON object:\n"
+        '  "description": string — component name + key specs (type, poles, rating)\n'
+        '  "qty": number — integer quantity (default 1)\n'
+        '  "unit": string — use "יח\'" for pieces, "מ\'" for meters\n'
+        '  "catalog": string — model/catalog number if visible, else ""\n\n'
+        "Return ONLY a JSON array, no markdown, no explanation. Example:\n"
         '[{"description":"מפסק אוטומטי 3P 63A","qty":2,"unit":"יח\'","catalog":""},\n'
         ' {"description":"מגן מנוע 11-16A","qty":1,"unit":"יח\'","catalog":"GV2ME16"}]\n\n'
-        "If no components are visible, return []."
+        "If no purchasable components are visible on this page, return []."
     )
     try:
         msg = client.messages.create(
@@ -470,18 +491,24 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         # Strip markdown code fences if present
         text = re.sub(r"^```[a-z]*\n?", "", text)
         text = re.sub(r"\n?```$", "", text)
-        # Extract just the JSON array — Claude sometimes appends explanatory text
+        # Extract just the JSON array
         json_match = re.search(r'\[.*\]', text, re.DOTALL)
         if not json_match:
             logger.warning(f"Vision page {page_num}: no JSON array found in response")
             return []
-        return json.loads(json_match.group())
+        arr_text = json_match.group()
+        try:
+            return json.loads(arr_text)
+        except json.JSONDecodeError:
+            # Fix invalid escape sequences Claude sometimes emits (e.g. \4, \מ)
+            arr_fixed = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', arr_text)
+            return json.loads(arr_fixed)
     except Exception as e:
         logger.warning(f"Vision page {page_num} extraction failed: {e}")
         return []
 
 
-def _process_pdf_vision(
+async def _process_pdf_vision(
     file_bytes: bytes,
     price_index: Optional[dict],
     price_records_raw: Optional[list],
@@ -491,7 +518,7 @@ def _process_pdf_vision(
     date: str,
 ) -> dict:
     """
-    Vision API PDF pipeline: pdf2image → Claude Vision per page → dedup → price match.
+    Vision API PDF pipeline: pdf2image → Claude Vision per page (parallel) → dedup → price match.
     Returns same shape as the old PDF /process response.
     """
     client = _anthropic.Anthropic(api_key=api_key)
@@ -503,23 +530,31 @@ def _process_pdf_vision(
         raise HTTPException(status_code=422, detail=f"שגיאה בפענוח PDF: {e}")
 
     page_count = len(images)
-    logger.info(f"Vision PDF: {page_count} page(s) converting...")
+    logger.info(f"Vision PDF: {page_count} page(s) — processing in parallel...")
 
     # Claude Vision max image dimension is 8000px — resize if needed
     MAX_DIM = 7500
 
-    # Extract components from each page
-    all_items: list = []
-    for i, img in enumerate(images):
+    def _page_bytes(img) -> bytes:
         w, h = img.size
         if max(w, h) > MAX_DIM:
             scale = MAX_DIM / max(w, h)
             img = img.resize((int(w * scale), int(h * scale)))
         buf = io.BytesIO()
         img.save(buf, format="PNG")
-        items = _vision_extract_page(client, buf.getvalue(), i + 1)
-        logger.info(f"  Page {i + 1}: {len(items)} components extracted")
-        all_items.extend(items)
+        return buf.getvalue()
+
+    # Process all pages concurrently via asyncio.to_thread
+    async def _extract_page_async(img, page_num: int) -> list:
+        img_bytes = _page_bytes(img)
+        items = await asyncio.to_thread(_vision_extract_page, client, img_bytes, page_num)
+        logger.info(f"  Page {page_num}: {len(items)} components extracted")
+        return items
+
+    page_results = await asyncio.gather(*[
+        _extract_page_async(img, i + 1) for i, img in enumerate(images)
+    ])
+    all_items: list = [item for page in page_results for item in page]
 
     # Deduplicate: merge items with identical description by summing qty
     merged: dict = {}
@@ -568,16 +603,22 @@ def _process_pdf_vision(
             for c in comps_for_match
         ]
 
-    # Step 4: semantic matching for unmatched
+    # Step 4: semantic matching for unmatched (batch of 80 to keep prompt manageable)
     unmatched = [(i, c) for i, c in enumerate(matched) if not c.get("price_found")]
+    SEMANTIC_BATCH = 80
     if unmatched and price_records_raw and api_key:
-        try:
-            semantic = _semantic_match_unmatched(unmatched, price_records_raw, api_key)
-            for idx, upd in semantic.items():
-                matched[idx] = {**matched[idx], **upd}
-            logger.info(f"Vision semantic matched {len(semantic)} of {len(unmatched)} unmatched")
-        except Exception as e:
-            logger.warning(f"Vision semantic matching skipped: {e}")
+        total_sem = 0
+        for batch_start in range(0, len(unmatched), SEMANTIC_BATCH):
+            batch = unmatched[batch_start:batch_start + SEMANTIC_BATCH]
+            try:
+                semantic = _semantic_match_unmatched(batch, price_records_raw, api_key)
+                # semantic keys are orig_i (index into matched) — already converted inside the function
+                for orig_idx, upd in semantic.items():
+                    matched[orig_idx] = {**matched[orig_idx], **upd}
+                total_sem += len(semantic)
+            except Exception as e:
+                logger.warning(f"Vision semantic matching batch skipped: {e}")
+        logger.info(f"Vision semantic matched {total_sem} of {len(unmatched)} unmatched")
 
     # Restore qty/unit from original extraction (match_prices may overwrite unit)
     for i, raw in enumerate(components_raw):
@@ -799,7 +840,7 @@ async def process(
 
         # ── PDF → Vision API flow ─────────────────────────────────────────────
         logger.info(f"Processing PDF (Vision): {file.filename} ({len(content) / 1024:.0f} KB)")
-        return _process_pdf_vision(
+        return await _process_pdf_vision(
             content, _price_index, _price_records_raw, api_key,
             project_name, manager_name, date,
         )

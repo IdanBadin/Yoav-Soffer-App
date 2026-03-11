@@ -149,7 +149,7 @@ export default function App() {
     setProcessingStep(0)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3 * 60 * 1000) // 3 minutes
+    const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000) // 10 minutes (multi-page PDFs)
 
     const t1 = setTimeout(() => setProcessingStep(1), 2000)
     const t2 = setTimeout(() => setProcessingStep(2), 5000)

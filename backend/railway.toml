@@ -3,3 +3,6 @@ builder = "nixpacks"
 
 [build.cache]
 paths = ["/root/.cache/pip"]
+
+[build.nixpacksPlan.phases.setup]
+nixPkgs = ["poppler_utils"]

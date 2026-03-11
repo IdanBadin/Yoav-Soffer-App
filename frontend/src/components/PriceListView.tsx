@@ -12,6 +12,8 @@ const EMPTY_ROW: Omit<PriceRow, 'row'> = {
   unit: "יח'",
   manufacturer: '',
   category: '',
+  cost: '',
+  notes: '',
 }
 
 export function PriceListView({ apiUrl }: Props) {
@@ -62,7 +64,16 @@ export function PriceListView({ apiUrl }: Props) {
 
   const handleEditStart = (row: PriceRow) => {
     setEditingRow(row.row)
-    setEditData({ catalog_number: row.catalog_number, item_name: row.item_name, unit_price: row.unit_price, unit: row.unit, manufacturer: row.manufacturer, category: row.category || '' })
+    setEditData({
+      catalog_number: row.catalog_number,
+      item_name: row.item_name,
+      unit_price: row.unit_price,
+      unit: row.unit,
+      manufacturer: row.manufacturer,
+      category: row.category || '',
+      cost: row.cost || '',
+      notes: row.notes || '',
+    })
     setIsAdding(false)
   }
 
@@ -136,7 +147,7 @@ export function PriceListView({ apiUrl }: Props) {
     .filter(r => {
       if (!search) return true
       const q = search.toLowerCase()
-      return r.catalog_number.toLowerCase().includes(q) || r.item_name.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q) || (r.category || '').toLowerCase().includes(q)
+      return r.catalog_number.toLowerCase().includes(q) || r.item_name.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q) || (r.category || '').toLowerCase().includes(q) || (r.notes || '').toLowerCase().includes(q)
     })
     .sort((a, b) => {
       const av = a[sortCol]; const bv = b[sortCol]
@@ -175,8 +186,13 @@ export function PriceListView({ apiUrl }: Props) {
     category: 'קטגוריה',
     manufacturer: 'יצרן',
     unit: 'יחידה',
-    unit_price: 'מחיר',
+    unit_price: 'מחיר מכירה',
+    cost: 'עלות קנייה',
+    notes: 'הערות',
   }
+
+  // Total columns: מק"ט, שם מוצר, קטגוריה, יצרן, יחידה, עלות, מחיר, הערות, פעולות = 9
+  const TOTAL_COLS = 9
 
   return (
     <div className="flex flex-col gap-6 py-4">
@@ -254,7 +270,7 @@ export function PriceListView({ apiUrl }: Props) {
         </div>
         <input
           type="text"
-          placeholder='חיפוש לפי מק״ט, שם מוצר, יצרן, קטגוריה...'
+          placeholder='חיפוש לפי מק״ט, שם מוצר, יצרן, קטגוריה, הערות...'
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full bg-primary/5 border border-primary/10 rounded-xl py-3.5 pr-12 pl-4 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium"
@@ -265,8 +281,8 @@ export function PriceListView({ apiUrl }: Props) {
       {isAdding && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-4">
           <p className="font-bold text-sm text-primary">הוספת פריט חדש</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {(['catalog_number', 'item_name', 'category', 'manufacturer', 'unit', 'unit_price'] as const).map(field => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {(['catalog_number', 'item_name', 'category', 'manufacturer', 'unit', 'unit_price', 'cost', 'notes'] as const).map(field => (
               <div key={field}>
                 <label className="block text-xs text-slate-400 uppercase tracking-wider mb-1.5">
                   {FIELD_LABELS[field]}
@@ -342,12 +358,14 @@ export function PriceListView({ apiUrl }: Props) {
               <thead>
                 <tr className="bg-primary/10 border-b border-primary/10">
                   {([
-                    { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט',    hide: false },
-                    { col: 'item_name'      as keyof PriceRow, label: 'שם מוצר', hide: false },
-                    { col: 'category'       as keyof PriceRow, label: 'קטגוריה', hide: true  },
-                    { col: 'manufacturer'   as keyof PriceRow, label: 'יצרן',    hide: true  },
-                    { col: 'unit'           as keyof PriceRow, label: 'יחידה',   hide: true  },
-                    { col: 'unit_price'     as keyof PriceRow, label: 'מחיר',    hide: false },
+                    { col: 'catalog_number' as keyof PriceRow, label: 'מק"ט',          hide: false },
+                    { col: 'item_name'      as keyof PriceRow, label: 'שם מוצר',       hide: false },
+                    { col: 'category'       as keyof PriceRow, label: 'קטגוריה',       hide: true  },
+                    { col: 'manufacturer'   as keyof PriceRow, label: 'יצרן',          hide: true  },
+                    { col: 'unit'           as keyof PriceRow, label: 'יחידה',         hide: true  },
+                    { col: 'cost'           as keyof PriceRow, label: 'עלות קנייה',    hide: true  },
+                    { col: 'unit_price'     as keyof PriceRow, label: 'מחיר מכירה',   hide: false },
+                    { col: 'notes'          as keyof PriceRow, label: 'הערות',         hide: true  },
                   ]).map(({ col, label, hide }) => (
                     <th
                       key={col}
@@ -370,7 +388,7 @@ export function PriceListView({ apiUrl }: Props) {
                   if (entry.type === 'header') {
                     return (
                       <tr key={`cat-${entry.category}-${idx}`} className="bg-slate-800/60 border-y border-primary/20">
-                        <td colSpan={7} className="px-5 py-2">
+                        <td colSpan={TOTAL_COLS} className="px-5 py-2">
                           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary/70">
                             <span className="material-symbols-outlined text-[14px] select-none">folder_open</span>
                             {entry.category}
@@ -389,8 +407,8 @@ export function PriceListView({ apiUrl }: Props) {
                     >
                       {isEditing ? (
                         <>
-                          {(['catalog_number', 'item_name', 'category', 'manufacturer', 'unit'] as const).map(f => (
-                            <td key={f} className={`px-3 py-2${f === 'category' || f === 'manufacturer' || f === 'unit' ? ' table-hide-mobile' : ''}`}>
+                          {(['catalog_number', 'item_name'] as const).map(f => (
+                            <td key={f} className="px-3 py-2">
                               <input
                                 className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
                                 value={editData[f]}
@@ -398,6 +416,25 @@ export function PriceListView({ apiUrl }: Props) {
                               />
                             </td>
                           ))}
+                          {(['category', 'manufacturer', 'unit'] as const).map(f => (
+                            <td key={f} className="px-3 py-2 table-hide-mobile">
+                              <input
+                                className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                                value={editData[f]}
+                                onChange={e => setEditData(p => ({ ...p, [f]: e.target.value }))}
+                              />
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 table-hide-mobile">
+                            <input
+                              type="text"
+                              className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                              value={editData.cost}
+                              onChange={e => setEditData(p => ({ ...p, cost: e.target.value }))}
+                              placeholder="0"
+                              style={{ direction: 'ltr', textAlign: 'left' }}
+                            />
+                          </td>
                           <td className="px-3 py-2">
                             <input
                               type="number"
@@ -405,6 +442,14 @@ export function PriceListView({ apiUrl }: Props) {
                               value={editData.unit_price}
                               onChange={e => setEditData(p => ({ ...p, unit_price: parseFloat(e.target.value) || 0 }))}
                               style={{ direction: 'ltr', textAlign: 'left' }}
+                            />
+                          </td>
+                          <td className="px-3 py-2 table-hide-mobile">
+                            <input
+                              type="text"
+                              className="w-full bg-background-dark border border-slate-600 rounded-lg py-1.5 px-3 text-slate-100 focus:outline-none focus:border-primary text-sm"
+                              value={editData.notes}
+                              onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
                             />
                           </td>
                           <td className="px-3 py-2 text-center">
@@ -434,11 +479,20 @@ export function PriceListView({ apiUrl }: Props) {
                           <td className="px-5 py-4 text-sm table-hide-mobile">
                             <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">{row.unit}</span>
                           </td>
+                          <td className="px-5 py-4 mono-font text-sm text-slate-400 table-hide-mobile" style={{ direction: 'ltr', textAlign: 'left' }}>
+                            {row.cost
+                              ? <span className="text-slate-300">{row.cost}</span>
+                              : <span className="text-slate-600">—</span>
+                            }
+                          </td>
                           <td className="px-5 py-4 mono-font text-sm font-bold text-slate-200" style={{ direction: 'ltr', textAlign: 'left' }}>
                             {row.unit_price > 0
                               ? `₪${row.unit_price.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               : <span className="text-slate-500">—</span>
                             }
+                          </td>
+                          <td className="px-5 py-4 text-xs text-slate-400 table-hide-mobile max-w-[180px] truncate">
+                            {row.notes || <span className="text-slate-600">—</span>}
                           </td>
                           <td className="px-5 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">

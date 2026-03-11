@@ -1,27 +1,48 @@
-# Task: Claude Semantic Price Matching — Testing & Deploy
-Date: 2026-03-09
+# Active Task: Flow 2 — Excel BoQ Implementation
+Plan: docs/plans/2026-03-11-boq-excel-flow.md
+
+## Chunks
+- [x] Chunk 1: Backend pipeline (Tasks 1-5) — 84% match on Format A, 238 prices loaded
+- [x] Chunk 2: Frontend (Tasks 6-7) — TS build passes, both servers running
+- [ ] Chunk 3: E2E test + commit (Tasks 8-9)
+
+---
+
+# Previous Task (completed): Excel → Google Sheets full sync + new columns
+Date: 2026-03-11
 
 ## Goal
-Verify that the new semantic matching step dramatically improves component match rate, then deploy to production.
+Replace Google Sheets price data with complete updated Excel, adding new columns (עלות, הערות), and display them in the PriceListView.
+
+## Excel Schema (מחירון לוחות י.סופר 10.2025.xlsx)
+- A: מס"ד (serial number)
+- B: ספק (manufacturer)
+- C: מק"ט (catalog_number)
+- D: תיאור (item_name) — category headers too
+- E: יח' מידה (unit)
+- F: כמות (quantity) — mostly empty
+- G: עלות (cost — purchase price) — NEW
+- H: מחיר (unit_price — sell price)
+- I: הערות (notes) — NEW
+
+## Current Google Sheets columns
+catalog_number | item_name | unit_price | unit | manufacturer | category
+
+## New Google Sheets columns to add
+catalog_number | item_name | unit_price | unit | manufacturer | category | cost | notes
 
 ## Plan
-- [ ] Upload problem PDF (the one with ~27 unmatched) at http://localhost:5175
-- [ ] Check backend logs for: "Semantic matching resolved X of Y unmatched components"
-- [ ] Verify `match_type: "semantic"` appears in the results table UI
-- [ ] Spot-check 3 matched items — right product + right price?
-- [ ] Upload a PDF with 0 unmatched → confirm no extra API call (no semantic log line)
-- [ ] `git push` → Railway auto-deploys → test on production URL
+- [ ] Step 1: Update scripts/import_pricelist.py to include cost + notes columns
+- [ ] Step 2: Test parse locally (dry run, no write)
+- [ ] Step 3: Run import to replace Google Sheets data
+- [ ] Step 4: Update backend/main.py to expose cost + notes in API
+- [ ] Step 5: Update frontend types.ts to include cost + notes
+- [ ] Step 6: Update frontend PriceListView.tsx to show cost + notes columns
+- [ ] Step 7: Start local dev servers for verification
 
 ## Notes
-- Backend already running: http://localhost:8000 (253 records loaded)
-- Frontend already running: http://localhost:5175
-- All code changes are in `backend/main.py` only (utils/ untouched)
-- Semantic matching is gracefully degrading — any failure returns {} and main flow continues
-- Plan file: `/Users/idanbadin/.claude/plans/curried-fluttering-cook.md`
-
-## Previous Task (completed)
-- [x] Import 254 items from Excel into Google Sheets with category support
-- [x] Backend: `category` field in PriceRecord + all CRUD endpoints
-- [x] Frontend: category grouping/display/add/edit in PriceListView
-- [x] TypeScript build passes
-- [ ] Push to GitHub ← still pending!
+- cost (עלות) is col G - can be string (formulas) or float
+- notes (הערות) is col I - plain text
+- Category headers: row has seq number, no supplier, no price → current_category updates
+- Last rows (286-290) are workflow instructions, not price data → skip
+- import_pricelist.py will clear and re-import → safe to run

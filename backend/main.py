@@ -175,6 +175,264 @@ where each pair is [component_index, price_list_index] (-1 = no match)"""
     return result
 
 
+# ── BoQ (Bill of Quantities) helpers ──────────────────────────────────────────
+
+def _detect_boq_structure(ws) -> dict:
+    """
+    Detect header row and column positions in a BoQ worksheet.
+    Returns:
+        header_row  (int, 1-indexed)
+        col_code    (int|None, 0-indexed)
+        col_desc    (int, 0-indexed)
+        col_unit    (int|None, 0-indexed)
+        col_qty     (int, 0-indexed)
+        col_price   (int, 0-indexed)
+        col_total   (int|None, 0-indexed)
+    """
+    DESC_KW  = {'תיאור', 'פירוט', 'description', 'שם'}
+    QTY_KW   = {'כמות', 'qty', 'quantity'}
+    PRICE_KW = {'מחיר', 'price'}
+    UNIT_KW  = {"יח'", 'יחידה', 'unit', "יח' מידה", "יח"}
+    TOTAL_KW = {'סהכ', 'סה"כ', 'סה כ', 'total'}
+    CODE_KW  = {'סעיף', 'מספר', 'קוד', 'code', 'number'}
+
+    header_row = None
+    header_vals = []
+    for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=8, values_only=True), start=1):
+        vals_lower = [str(v).strip().lower() if v is not None else '' for v in row]
+        hits = 0
+        for v in vals_lower:
+            if any(kw.lower() in v for kw in QTY_KW | PRICE_KW | DESC_KW):
+                hits += 1
+        if hits >= 2:
+            header_row = row_idx
+            header_vals = [str(v).strip() if v is not None else '' for v in row]
+            break
+
+    if header_row is None:
+        header_row = 1
+        header_vals = [str(v).strip() if v is not None else ''
+                       for v in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+
+    col_desc = col_qty = col_price = None
+    col_code = col_unit = col_total = None
+
+    for i, v in enumerate(header_vals):
+        vl = v.lower()
+        if col_code  is None and any(k.lower() in vl for k in CODE_KW):  col_code  = i
+        if col_desc  is None and any(k.lower() in vl for k in DESC_KW):  col_desc  = i
+        if col_unit  is None and any(k.lower() in vl for k in UNIT_KW):  col_unit  = i
+        if col_qty   is None and any(k.lower() in vl for k in QTY_KW):   col_qty   = i
+        if col_price is None and any(k.lower() in vl for k in PRICE_KW): col_price = i
+        if col_total is None and any(k.lower() in vl for k in TOTAL_KW): col_total = i
+
+    # Positional fallback for formats where keywords don't appear in header
+    # Observed: [code(0), desc(1), unit(2), qty(3), price(4), total(5)]
+    if col_desc  is None: col_desc  = 1
+    if col_qty   is None: col_qty   = 3
+    if col_price is None: col_price = 4
+    if col_unit  is None: col_unit  = 2
+    if col_total is None and ws.max_column >= 6: col_total = 5
+
+    return {
+        'header_row': header_row,
+        'col_code':   col_code,
+        'col_desc':   col_desc,
+        'col_unit':   col_unit,
+        'col_qty':    col_qty,
+        'col_price':  col_price,
+        'col_total':  col_total,
+    }
+
+
+def _extract_boq_items(ws, structure: dict) -> list:
+    """
+    Extract priceable component rows from a BoQ worksheet.
+    Returns list of dicts with row metadata for writing back and matching.
+    """
+    SKIP_UNITS = {'הערה', 'note', 'notes', ''}
+    items = []
+    data_start = structure['header_row'] + 1
+
+    c_desc  = structure['col_desc']
+    c_qty   = structure['col_qty']
+    c_unit  = structure['col_unit']
+    c_code  = structure['col_code']
+    c_price = structure['col_price']
+    c_total = structure['col_total']
+
+    max_needed = max(v for v in [c_desc, c_qty, c_unit or 0, c_code or 0, c_price] if v is not None)
+
+    for row_idx, row in enumerate(
+        ws.iter_rows(min_row=data_start, values_only=True), start=data_start
+    ):
+        if len(row) <= max_needed:
+            continue
+
+        desc    = row[c_desc] if c_desc is not None else None
+        qty_raw = row[c_qty]  if c_qty  is not None else None
+        unit_raw = row[c_unit] if c_unit is not None else ''
+        code_raw = row[c_code] if c_code is not None else ''
+
+        if desc is None or str(desc).strip() == '':
+            continue
+
+        desc_str = str(desc).strip()
+        unit_str = str(unit_raw).strip() if unit_raw is not None else ''
+
+        if unit_str in SKIP_UNITS or len(desc_str) < 3:
+            continue
+
+        try:
+            qty = float(str(qty_raw).replace(',', '.').strip()) if qty_raw is not None else 0.0
+        except (ValueError, TypeError):
+            qty = 0.0
+
+        if qty <= 0:
+            continue
+
+        code_str = str(code_raw).strip() if code_raw is not None else ''
+
+        items.append({
+            'row_idx':        row_idx,
+            'description':    desc_str,
+            'qty':            qty,
+            'unit':           unit_str or "יח'",
+            'code':           code_str,
+            'catalog_number': code_str,
+            'manufacturer':   '',
+            'desc_col':       c_desc,        # 0-indexed, for highlight
+            'price_col':      c_price,       # 0-indexed, for writing price
+            'total_col':      c_total,       # 0-indexed or None
+        })
+
+    return items
+
+
+def _fill_boq_excel(file_bytes: bytes, items: list, matched: list) -> bytes:
+    """
+    Write matched prices back into the Excel file in-place.
+    Unmatched items get yellow highlight on their description cell.
+    Returns modified Excel bytes.
+    """
+    import io as _io
+    from openpyxl import load_workbook as _load_wb
+    from openpyxl.styles import PatternFill
+
+    YELLOW = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
+    wb = _load_wb(_io.BytesIO(file_bytes))
+    ws = wb.active
+
+    for item, match in zip(items, matched):
+        row_idx   = item['row_idx']
+        price_col = item['price_col'] + 1          # openpyxl is 1-indexed
+        desc_col  = item['desc_col'] + 1
+        total_col = (item['total_col'] + 1) if item['total_col'] is not None else None
+
+        if match.get('price_found') and match.get('price', 0) > 0:
+            ws.cell(row=row_idx, column=price_col).value = match['price']
+            if total_col:
+                ws.cell(row=row_idx, column=total_col).value = item['qty'] * match['price']
+        else:
+            ws.cell(row=row_idx, column=desc_col).fill = YELLOW
+
+    buf = _io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _process_boq_flow(
+    file_bytes: bytes,
+    price_index: Optional[dict],
+    price_records_raw: Optional[list],
+    api_key: str,
+) -> dict:
+    """
+    Full BoQ processing pipeline.
+    Returns dict with same shape as /process PDF response.
+    """
+    import io as _io
+    from openpyxl import load_workbook as _load_wb
+
+    wb = _load_wb(_io.BytesIO(file_bytes), data_only=True)
+    ws = wb.active
+
+    structure = _detect_boq_structure(ws)
+    items = _extract_boq_items(ws, structure)
+
+    if not items:
+        raise ValueError("לא נמצאו פריטים בכתב הכמויות. ודא שהקובץ מכיל עמודות כמות ומחיר.")
+
+    logger.info(f"BoQ: extracted {len(items)} priceable items")
+
+    components_for_match = [
+        {
+            "description":    item["description"],
+            "catalog_number": item["catalog_number"],
+            "manufacturer":   item["manufacturer"],
+            "qty":            item["qty"],
+        }
+        for item in items
+    ]
+
+    # Steps 1-3: exact + normalized + fuzzy
+    if price_index:
+        matched = match_prices(components_for_match, price_index)
+    else:
+        matched = [
+            {**c, "price": 0.0, "unit": "יח'", "match_type": "none", "price_found": False}
+            for c in components_for_match
+        ]
+
+    # Step 4: semantic matching for unmatched
+    unmatched = [(i, c) for i, c in enumerate(matched) if not c.get("price_found")]
+    if unmatched and price_records_raw and api_key:
+        try:
+            semantic = _semantic_match_unmatched(unmatched, price_records_raw, api_key)
+            for idx, match_data in semantic.items():
+                matched[idx] = {**matched[idx], **match_data}
+            logger.info(f"BoQ semantic matched {len(semantic)} of {len(unmatched)} unmatched")
+        except Exception as e:
+            logger.warning(f"BoQ semantic matching skipped: {e}")
+
+    # Merge qty/unit back for display
+    for i, item in enumerate(items):
+        matched[i] = {
+            **matched[i],
+            "qty":  item["qty"],
+            "unit": matched[i].get("unit") or item["unit"],
+        }
+
+    filled_bytes = _fill_boq_excel(file_bytes, items, matched)
+
+    components_display = [
+        {
+            "description":  item["description"],
+            "catalog":      item["catalog_number"],   # frontend Component interface uses 'catalog'
+            "user1":        "",
+            "manufacturer": matched[i].get("manufacturer", ""),
+            "qty":          item["qty"],
+            "unit":         matched[i].get("unit", item["unit"]),
+            "price":        matched[i].get("price", 0.0),
+            "match_type":   matched[i].get("match_type", "none"),
+            "price_found":  matched[i].get("price_found", False),
+        }
+        for i, item in enumerate(items)
+    ]
+
+    matched_count = sum(1 for c in components_display if c["price_found"])
+    logger.info(f"BoQ: {matched_count}/{len(items)} items priced")
+
+    return {
+        "components":  components_display,
+        "page_count":  0,
+        "excel_quote": base64.b64encode(filled_bytes).decode("utf-8"),
+        "excel_parts": "",
+        "boq_mode":    True,
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _price_index
@@ -201,6 +459,8 @@ class PriceRecord(BaseModel):
     unit: str = "יח'"
     manufacturer: str = ""
     category: str = ""
+    cost: str = ""
+    notes: str = ""
 
 
 @app.get("/health")
@@ -244,6 +504,8 @@ async def get_prices():
                 "unit": str(r.get("unit", "יח'") or "יח'"),
                 "manufacturer": str(r.get("manufacturer", "") or ""),
                 "category": str(r.get("category", "") or ""),
+                "cost": str(r.get("cost", "") or ""),
+                "notes": str(r.get("notes", "") or ""),
             })
         return {"records": result, "count": len(result)}
     except HTTPException:
@@ -267,6 +529,8 @@ async def update_price(row: int, data: PriceRecord):
             "unit": data.unit,
             "manufacturer": data.manufacturer,
             "category": data.category,
+            "cost": data.cost,
+            "notes": data.notes,
         }
         cell_updates = []
         for field, col in col_map.items():
@@ -297,6 +561,8 @@ async def add_price(data: PriceRecord):
             data.unit,
             data.manufacturer,
             data.category,
+            data.cost,
+            data.notes,
         ])
         return {"status": "ok"}
     except HTTPException:
@@ -336,8 +602,15 @@ async def process(
             detail="ANTHROPIC_API_KEY לא מוגדר בסביבת הייצור. יש להגדיר אותו ב-Railway Variables."
         )
 
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=422, detail="יש להעלות קובץ PDF בלבד. סוג הקובץ שהועלה אינו נתמך.")
+    fname_lower = (file.filename or "").lower()
+    is_pdf  = fname_lower.endswith(".pdf")
+    is_xlsx = fname_lower.endswith(".xlsx") or fname_lower.endswith(".xls")
+
+    if not is_pdf and not is_xlsx:
+        raise HTTPException(
+            status_code=422,
+            detail="יש להעלות קובץ PDF (שרטוט) או Excel (כתב כמויות). סוג הקובץ שהועלה אינו נתמך."
+        )
 
     MAX_SIZE = 50 * 1024 * 1024  # 50 MB
     tmp_path = None
@@ -353,6 +626,12 @@ async def process(
                 status_code=422,
                 detail=f"הקובץ גדול מדי ({size_mb:.1f} MB). הגודל המקסימלי הוא 50 MB."
             )
+
+        # ── Excel BoQ flow ────────────────────────────────────────────────────
+        if is_xlsx:
+            logger.info(f"Processing BoQ Excel: {file.filename} ({len(content) / 1024:.0f} KB)")
+            return _process_boq_flow(content, _price_index, _price_records_raw, api_key)
+        # ── PDF flow continues below ──────────────────────────────────────────
 
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(content)

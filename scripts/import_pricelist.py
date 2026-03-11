@@ -1,6 +1,9 @@
 """
-One-time import script: Excel price list → Google Sheets
-Parses מחירון לוחות י.סופר 10.2025.xlsx and imports with category support.
+Import script: Excel price list → Google Sheets
+Parses מחירון לוחות י.סופר 10.2025.xlsx and imports with full column support.
+
+Columns imported:
+  catalog_number, item_name, unit_price, unit, manufacturer, category, cost, notes
 
 Usage:
     cd "Yoav Sofer/backend"
@@ -33,14 +36,17 @@ def parse_excel(path: Path) -> list[dict]:
     """
     Parse Excel price list.
     Column layout (1-indexed):
-        A(1): sequential number
+        A(1): sequential number (מס"ד)
         B(2): supplier (ספק)
         C(3): catalog number (מק"ט)
         D(4): description (תיאור) — category header OR item name
         E(5): unit (יח' מידה)
+        F(6): quantity (כמות)
+        G(7): cost/purchase price (עלות)
         H(8): sell price (מחיר)
+        I(9): notes (הערות)
 
-    Category row: has A, no B, no H, has D
+    Category row: has A (seq), no B (supplier), no H (price), has D
     Item row: has D and H
     """
     wb = load_workbook(path, data_only=True)
@@ -49,13 +55,15 @@ def parse_excel(path: Path) -> list[dict]:
     items = []
     current_category = ""
 
-    for row in ws.iter_rows(values_only=True):
+    for row in ws.iter_rows(min_row=3, values_only=True):  # skip title row (1) and header row (2)
         col_a = row[0] if len(row) > 0 else None
         col_b = row[1] if len(row) > 1 else None
         col_c = row[2] if len(row) > 2 else None
         col_d = row[3] if len(row) > 3 else None
         col_e = row[4] if len(row) > 4 else None
+        col_g = row[6] if len(row) > 6 else None
         col_h = row[7] if len(row) > 7 else None
+        col_i = row[8] if len(row) > 8 else None
 
         # Skip truly empty rows
         if col_d is None:
@@ -70,7 +78,7 @@ def parse_excel(path: Path) -> list[dict]:
         has_supplier = col_b is not None and str(col_b).strip() not in ("", "None")
         has_seq = col_a is not None and str(col_a).strip() not in ("", "None")
 
-        # Category header detection
+        # Category header detection: has seq, no supplier, no price
         if has_seq and not has_supplier and not has_price:
             current_category = col_d_str
             continue
@@ -94,6 +102,20 @@ def parse_excel(path: Path) -> list[dict]:
             if manufacturer in ("None", ""):
                 manufacturer = ""
 
+            # cost (עלות) — purchase price, may be numeric or formula string
+            cost = ""
+            if col_g is not None:
+                cost_str = str(col_g).strip()
+                if cost_str not in ("", "None"):
+                    try:
+                        cost = str(round(float(cost_str.replace(",", ".")), 4))
+                    except (ValueError, TypeError):
+                        cost = cost_str  # keep as-is if formula/text
+
+            notes = str(col_i).strip() if col_i is not None else ""
+            if notes in ("None", ""):
+                notes = ""
+
             items.append({
                 "catalog_number": catalog,
                 "item_name": col_d_str,
@@ -101,6 +123,8 @@ def parse_excel(path: Path) -> list[dict]:
                 "unit": unit,
                 "manufacturer": manufacturer,
                 "category": current_category,
+                "cost": cost,
+                "notes": notes,
             })
 
     return items
@@ -124,7 +148,7 @@ def import_to_sheets(items: list[dict]) -> None:
     ws.clear()
 
     # Write header row
-    header = ["catalog_number", "item_name", "unit_price", "unit", "manufacturer", "category"]
+    header = ["catalog_number", "item_name", "unit_price", "unit", "manufacturer", "category", "cost", "notes"]
     ws.append_row(header)
 
     # Write all item rows
@@ -136,6 +160,8 @@ def import_to_sheets(items: list[dict]) -> None:
             item["unit"],
             item["manufacturer"],
             item["category"],
+            item.get("cost", ""),
+            item.get("notes", ""),
         ]
         for item in items
     ]

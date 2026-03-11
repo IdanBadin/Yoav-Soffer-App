@@ -13,7 +13,9 @@ export function UploadZone({ onFile }: Props) {
     e.preventDefault()
     setDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file && file.name.toLowerCase().endsWith('.pdf')) onFile(file)
+    if (!file) return
+    const name = file.name.toLowerCase()
+    if (name.endsWith('.pdf') || name.endsWith('.xlsx')) onFile(file)
   }
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -63,16 +65,16 @@ export function UploadZone({ onFile }: Props) {
 
           <div className="space-y-2">
             <h3 className="text-xl sm:text-2xl font-bold text-slate-100">
-              {dragging ? 'שחרר כדי להעלות' : 'גרור קובץ PDF לכאן'}
+              {dragging ? 'שחרר כדי להעלות' : 'גרור קובץ PDF או Excel לכאן'}
             </h3>
             <p className="text-slate-400">
-              {dragging ? 'קובץ PDF של שרטוט AutoCAD' : 'או לחץ לבחירת קובץ מהמחשב'}
+              {dragging ? 'שרטוט AutoCAD (PDF) או כתב כמויות (Excel)' : 'או לחץ לבחירת קובץ מהמחשב'}
             </p>
           </div>
 
           {/* Tag badges */}
           <div className="flex gap-3 flex-wrap justify-center mt-2">
-            {['PDF בלבד', 'שרטוטי AutoCAD', 'כל גודל'].map(tag => (
+            {['PDF / Excel', 'שרטוטי AutoCAD', 'כתב כמויות'].map(tag => (
               <span
                 key={tag}
                 className="mono-font px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary"
@@ -85,7 +87,7 @@ export function UploadZone({ onFile }: Props) {
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf"
+            accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={handleChange}
             className="hidden"
           />
@@ -104,9 +106,9 @@ export function UploadZone({ onFile }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { num: '01', title: 'העלאת שרטוט', desc: 'העלה קובץ PDF של שרטוט AutoCAD עם רשימת הציוד', icon: 'upload_file' },
-            { num: '02', title: 'ניתוח Claude AI', desc: 'בינה מלאכותית מחלצת את כל הרכיבים, יצרנים ומספרי קטלוג', icon: 'psychology' },
-            { num: '03', title: 'Excel מוכן להגשה', desc: 'הצעת מחיר וכתב חלקים עם מחירים מעודכנים, מוכנים להגשה ללקוח', icon: 'table_view' },
+            { num: '01', title: 'העלאת קובץ', desc: 'שרטוט AutoCAD (PDF) לחילוץ ציוד, או כתב כמויות (Excel) למילוי מחירים', icon: 'upload_file' },
+            { num: '02', title: 'ניתוח Claude AI', desc: 'בינה מלאכותית מחלצת רכיבים ומתאימה כל פריט למחירון החברה', icon: 'psychology' },
+            { num: '03', title: 'Excel מוכן להגשה', desc: 'הצעת מחיר ממולאת עם מחירים מעודכנים, מוכנה להגשה ללקוח', icon: 'table_view' },
           ].map(step => (
             <div
               key={step.num}

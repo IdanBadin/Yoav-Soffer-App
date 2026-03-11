@@ -16,6 +16,7 @@ export interface ProcessResult {
   page_count: number
   excel_quote: string
   excel_parts: string
+  boq_mode?: boolean
 }
 
 export type AppState = 'idle' | 'ready' | 'processing' | 'results'
@@ -35,4 +36,6 @@ export interface PriceRow {
   unit: string
   manufacturer: string
   category: string
+  cost: string
+  notes: string
 }

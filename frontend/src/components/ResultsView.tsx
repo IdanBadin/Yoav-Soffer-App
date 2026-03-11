@@ -26,7 +26,7 @@ function downloadExcel(b64: string, filename: string) {
 }
 
 export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
-  const { components, page_count, excel_quote, excel_parts } = result
+  const { components, page_count, excel_quote, excel_parts, boq_mode } = result
   const total = components.length
   const matched = components.filter(c => c.price_found).length
   const unmatched = total - matched
@@ -40,7 +40,7 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
       {/* Page header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 mb-1">תוצאות ניתוח שרטוט</h1>
+          <h1 className="text-2xl font-bold text-slate-100 mb-1">{boq_mode ? 'תוצאות כתב כמויות' : 'תוצאות ניתוח שרטוט'}</h1>
           <p className="text-slate-400 text-sm">{projectName} · {dateStr}</p>
         </div>
         <button
@@ -48,18 +48,18 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
           className="flex items-center gap-2 bg-primary text-background-dark font-bold px-5 py-2.5 rounded-lg hover:brightness-110 transition-all"
         >
           <span className="material-symbols-outlined text-[18px] select-none">add_circle</span>
-          <span>עבד שרטוט נוסף</span>
+          <span>{boq_mode ? 'עבד קובץ נוסף' : 'עבד שרטוט נוסף'}</span>
         </button>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'עמודי PDF', value: page_count, color: 'text-primary', warn: false },
-          { label: 'רכיבים שזוהו', value: total, color: 'text-primary', warn: false },
+        {([
+          !boq_mode ? { label: 'עמודי PDF', value: page_count, color: 'text-primary', warn: false } : null,
+          { label: boq_mode ? 'פריטים בכתב' : 'רכיבים שזוהו', value: total, color: 'text-primary', warn: false },
           { label: 'תואמו למחיר', value: matched, color: 'text-success', warn: false },
           { label: 'ללא מחיר', value: unmatched, color: unmatched > 0 ? 'text-warning' : 'text-success', warn: unmatched > 0 },
-        ].map((s, i) => (
+        ] as const).filter((s): s is NonNullable<typeof s> => s !== null).map((s, i) => (
           <div
             key={i}
             className={`p-6 rounded-xl border ${s.warn ? 'bg-warning/5 border-warning/30' : 'bg-primary/5 border-primary/10'}`}
@@ -154,22 +154,22 @@ export function ResultsView({ result, projectName, dateStr, onReset }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {[
             {
-              title: 'הצעת מחיר',
-              desc: '5 עמודות עם נוסחאות Excel',
+              title: boq_mode ? 'כתב כמויות ממולא' : 'הצעת מחיר',
+              desc: boq_mode ? 'הקובץ המקורי עם מחירים מולאו — פריטים ללא מחיר מסומנים בצהוב' : '5 עמודות עם נוסחאות Excel',
               b64: excel_quote,
-              filename: `הצעת_מחיר_${projectSlug}_${dateSlug}.xlsx`,
-              icon: 'description',
+              filename: boq_mode ? `כתב_כמויות_ממולא_${projectSlug}_${dateSlug}.xlsx` : `הצעת_מחיר_${projectSlug}_${dateSlug}.xlsx`,
+              icon: boq_mode ? 'price_check' : 'description',
               iconBg: 'bg-blue-900/30 text-blue-400',
             },
-            {
+            !boq_mode ? {
               title: 'כתב חלקים (BOM)',
               desc: 'פירוט טכני מלא עם מק"ט ויצרן',
               b64: excel_parts,
               filename: `כתב_חלקים_${projectSlug}_${dateSlug}.xlsx`,
               icon: 'list_alt',
               iconBg: 'bg-success/10 text-success',
-            },
-          ].map((dl, i) => (
+            } : null,
+          ].filter((dl): dl is NonNullable<typeof dl> => dl !== null).map((dl, i) => (
             <div
               key={i}
               className="bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4"

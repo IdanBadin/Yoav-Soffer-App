@@ -5,4 +5,4 @@ builder = "nixpacks"
 paths = ["/root/.cache/pip"]
 
 [build.nixpacksPlan.phases.setup]
-nixPkgs = ["poppler_utils"]
+aptPkgs = ["poppler-utils"]

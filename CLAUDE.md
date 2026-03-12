@@ -233,7 +233,63 @@ ANTHROPIC_API_KEY, GOOGLE_SHEET_ID, GOOGLE_SHEET_NAME, GOOGLE_CREDENTIALS_B64, A
 - After any Railway env var change → redeploy triggers automatically
 - Footer year is dynamic: `{new Date().getFullYear()}` — never hardcode
 
-## Next Steps (as of 2026-03-09)
-- [ ] Test semantic matching with real PDF on local → check logs for "Semantic matching resolved X of Y"
-- [ ] Spot-check matched items for correctness (right product + right price)
-- [ ] Monitor production Railway logs after deploy for semantic matching performance
+## Price Matching Pipeline — FULL (as of 2026-03-12)
+The `/process` endpoint now has TWO flows:
+
+### Flow 1 — PDF (AutoCAD drawings)
+Replaces old pdfplumber with **Claude Vision API** (`_process_pdf_vision` in main.py):
+1. `pdf2image` converts each page to PNG (150 DPI, resize to max 7500px)
+2. All pages processed **in parallel** via `asyncio.gather` + `asyncio.to_thread`
+3. Claude Vision (`claude-sonnet-4-5`) extracts purchasable components from each page
+4. Deduplication by description (sum qty for duplicates)
+5. 4-step price matching: exact → normalized → fuzzy → semantic (batched, 80/batch)
+- Result: 17-page real panel drawing → 49% match, ~37s Vision + ~90s semantic = ~2min total
+
+### Flow 2 — Excel BoQ (כתב כמויות)
+`_process_boq_flow` in main.py:
+1. Auto-detect header row + column positions (keyword scan + positional fallback)
+2. Extract priceable rows (skip notes/headers/zero-qty)
+3. 4-step price matching same as PDF flow
+4. Fill prices in-place + yellow highlight for unmatched
+5. Returns `boq_mode: True` → frontend shows BoQ-specific UI
+
+### Semantic Matching Details
+- Function: `_semantic_match_unmatched()` — `max_tokens=4096`, batches of 80
+- Uses `json.JSONDecoder.raw_decode()` to handle markdown fences + extra text
+- Graceful fallback per batch: exception → skip batch, continue
+- BoQ + Vision both use same semantic function
+
+## Google Sheets Price List
+- 238 rows (updated 2026-03-11), schema: catalog_number | item_name | unit_price | unit | manufacturer | category | cost | notes
+- Sheet ID: 1EckbrWL5jpqLf4Nczq7_b_Euvmq7bExNNQwut5BtXYA
+- 33 categories, cost (עלות קנייה) + notes (הערות) added
+- Import script: `scripts/import_pricelist.py` (one-time use, do not re-run without backing up)
+
+## Railway Deployment (as of 2026-03-12)
+- `backend/railway.toml`: `aptPkgs = ["poppler-utils"]` — DO NOT change to nixPkgs (breaks Python)
+- `backend/requirements.txt` includes `pdf2image>=1.17.0`
+- Last successful deploy: commit a070851 is deploying now (poppler fix)
+- Previous deploys 65645ad + f75384a failed with "python: command not found" due to nixPkgs override
+
+## Frontend Changes (2026-03-12)
+- `UploadZone.tsx` — accepts .xlsx in addition to PDF
+- `ResultsView.tsx` — boq_mode aware (labels, stat cards, downloads)
+- `PriceListView.tsx` — cost/notes columns with full CRUD
+- `types.ts` — PriceRow has cost/notes; ProcessResult has boq_mode
+- `App.tsx` — request timeout 3min → **10min** (for multi-page PDFs)
+
+## Sample Files
+```
+sample_files/
+  שרטוט לדוגמא AutoCAD (2-5).pdf  — real panel drawings (77-86% match)
+  דוגמא לכתב כמויות.xlsx           — BoQ format A (84% match)
+  דוגמא לכתב כמויות (2-3).xlsx     — BoQ formats B+C
+  דוגמא לפורמט ריק של הצעת מחיר.xlsx — blank quote template
+```
+Real test file: `/Users/idanbadin/Downloads/תיקיה לעידן בדין.../לוח מבנה 118.pdf` (17 pages, 49% match)
+
+## Known Issues / Next Steps
+- [ ] Railway production test: verify poppler installs with aptPkgs (commit 9d5a411 / a070851)
+- [ ] לוח מבנה 118.pdf on production: expect ~2 min processing, 49%+ match
+- [ ] Improve Vision extraction for very dense/complex multi-page drawings
+- [ ] CORS still defaults to "*" in main.py — medium security risk (not urgent)

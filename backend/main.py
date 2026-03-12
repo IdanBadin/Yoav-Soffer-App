@@ -514,6 +514,63 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         return []
 
 
+def _validate_components_ai(items: list, api_key: str) -> list:
+    """
+    Use Claude to filter out non-purchasable drawing annotations from Vision-extracted items.
+
+    Dynamic validation — works for any drawing without hardcoded rules.
+    Uses claude-haiku for speed + cost efficiency (one batch call).
+    Returns the filtered list of real purchasable components.
+    """
+    if not items:
+        return items
+
+    client = _anthropic.Anthropic(api_key=api_key)
+
+    items_json = json.dumps(
+        [{"idx": i, "desc": item.get("description", ""), "catalog": item.get("catalog", "")}
+         for i, item in enumerate(items)],
+        ensure_ascii=False
+    )
+
+    prompt = (
+        "You are an expert in Israeli electrical panel drawings (לוחות חשמל).\n\n"
+        "Below is a list of items extracted from an AutoCAD drawing. "
+        "Some are real purchasable electrical components; others are drawing annotations, "
+        "cable cross-section references, dimensional notes, or labor items.\n\n"
+        "Return a JSON array of ONLY the indices of items that are real purchasable components "
+        "(circuit breakers, contactors, terminals, busbars, meters, relays, enclosures, etc.).\n\n"
+        "EXCLUDE indices for:\n"
+        "- Cable cross-sections (e.g., '3×6', 'NYY 5×4', 'כבל 3×2.5')\n"
+        "- Shaft / mechanical dimensions (ציר, קוטר, mm dimensions)\n"
+        "- Labor / travel items (נסיעה, עבודה, התקנה)\n"
+        "- Drawing metadata (titles, standards, IP ratings, dates, revision notes)\n\n"
+        f"Items:\n{items_json}\n\n"
+        "Return ONLY a JSON array of indices to keep, e.g.: [0, 1, 3, 5]\n"
+        "No explanation, no markdown."
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = msg.content[0].text.strip()
+        # Extract JSON array from response
+        match = re.search(r'\[[\d\s,]*\]', text)
+        if not match:
+            logger.warning("AI validation: no valid index array returned, keeping all items")
+            return items
+        keep_indices = set(json.loads(match.group()))
+        filtered = [item for i, item in enumerate(items) if i in keep_indices]
+        logger.info(f"AI validation: kept {len(filtered)}/{len(items)} items")
+        return filtered
+    except Exception as e:
+        logger.warning(f"AI validation failed ({e}), keeping all items")
+        return items  # Graceful fallback: never break the main flow
+
+
 async def _process_pdf_vision(
     file_bytes: bytes,
     price_index: Optional[dict],
@@ -560,7 +617,9 @@ async def _process_pdf_vision(
     page_results = await asyncio.gather(*[
         _extract_page_async(img, i + 1) for i, img in enumerate(images)
     ])
-    all_items: list = [item for page in page_results for item in page]
+    all_items_raw: list = [item for page in page_results for item in page]
+    logger.info(f"Vision PDF: {len(all_items_raw)} raw items before AI validation")
+    all_items = _validate_components_ai(all_items_raw, api_key)
 
     # Deduplicate: merge items with identical description by summing qty
     merged: dict = {}

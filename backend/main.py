@@ -457,16 +457,22 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
     b64 = base64.standard_b64encode(img_bytes).decode()
     prompt = (
         "You are analyzing an AutoCAD electrical panel (לוח חשמל) drawing.\n\n"
-        "Extract ONLY purchasable electrical components — physical items that appear in a bill of materials.\n\n"
-        "INCLUDE: circuit breakers (מפסק), contactors (מגען), motor protection relays (מגן מנוע), "
-        "residual current devices (מפסק פחת/מגן מנוע), terminals (מסוף), busbars (שפה/בסבר), "
+        "Extract ONLY purchasable electrical components — physical items that a supplier would sell and appear in a bill of materials.\n\n"
+        "INCLUDE (examples only — include similar items):\n"
+        "  circuit breakers (מפסק אוטומטי), contactors (מגען), motor protection relays (מגן מנוע), "
+        "residual current devices (מפסק פחת), terminals (מסוף/קלמה), busbars (שפה/בוסבר), "
         "meters (מד), pilot lights (נורה), selector switches (בורר), timers (טיימר), "
-        "transformers (שנאי/טרנספורמטור), fuses (פיוז), cables (כבל), surge protectors (מוגן ברק), "
-        "enclosures (ארון חשמל/לוח), din rails, cable ducts (מרזב).\n\n"
-        "EXCLUDE: specifications text, dimensions, weights, standards (IEC/EN), notes, dates, "
-        "temperature/IP ratings, company names, drawing titles, section headers, calculations.\n\n"
+        "transformers (שנאי/טרנספורמטור), fuses (פיוז), surge protectors (מוגן ברק), "
+        "enclosures (ארון חשמל/לוח), DIN rails, cable ducts (מרזב), "
+        "push buttons (לחצן), relays (ממסר), soft starters (מתנע רך), VFDs (ממיר תדר).\n\n"
+        "NEVER EXTRACT — these are drawing annotations, not purchasable items:\n"
+        "  • Cables / cross-sections — any text like 'כבל', 'NYY', 'NYM', 'כבלים', '3×6', '5×4', '2×2.5', cable cross-section references\n"
+        "  • Shaft / mechanical dimensions — 'ציר', 'קוטר', 'אורך', any item with mm/cm dimensions as primary description\n"
+        "  • Labor / travel — 'נסיעה', 'עבודה', 'התקנה', 'הנדסה'\n"
+        "  • Drawing metadata — standards (IEC/EN/ISO), IP ratings, temperature ratings, drawing titles, revision numbers, company names\n"
+        "  • Pure notes — section headers, comments, calculation values\n\n"
         "For each component return a JSON object:\n"
-        '  "description": string — component name + key specs (type, poles, rating)\n'
+        '  "description": string — component name + key specs (type, poles, rating in A/V/kW)\n'
         '  "qty": number — integer quantity (default 1)\n'
         '  "unit": string — use "יח\'" for pieces, "מ\'" for meters\n'
         '  "catalog": string — model/catalog number if visible, else ""\n\n'

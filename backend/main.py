@@ -353,10 +353,11 @@ def _fill_boq_excel(file_bytes: bytes, items: list, matched: list) -> bytes:
             unit_price = match['price']
             total_price = item['qty'] * unit_price
             ws.cell(row=row_idx, column=price_col).value = unit_price
-            if total_col:
+            if total_col is not None:
                 ws.cell(row=row_idx, column=total_col).value = total_price
             else:
-                # No dedicated total column detected — write total to the column right of price
+                # No dedicated total column detected — write total to column right of price
+                logger.warning(f"BoQ: no total_col detected, writing total to price_col+1 (col {price_col})")
                 ws.cell(row=row_idx, column=price_col + 1).value = total_price
         else:
             ws.cell(row=row_idx, column=desc_col).fill = YELLOW
@@ -519,7 +520,7 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         return []
 
 
-def _validate_components_ai(items: list, client) -> list:
+def _validate_components_ai(items: list, client: "_anthropic.Anthropic") -> list:
     """
     Use Claude to filter out non-purchasable drawing annotations from Vision-extracted items.
 

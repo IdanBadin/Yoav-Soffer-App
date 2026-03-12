@@ -350,9 +350,14 @@ def _fill_boq_excel(file_bytes: bytes, items: list, matched: list) -> bytes:
         total_col = (item['total_col'] + 1) if item['total_col'] is not None else None
 
         if match.get('price_found') and match.get('price', 0) > 0:
-            ws.cell(row=row_idx, column=price_col).value = match['price']
+            unit_price = match['price']
+            total_price = item['qty'] * unit_price
+            ws.cell(row=row_idx, column=price_col).value = unit_price
             if total_col:
-                ws.cell(row=row_idx, column=total_col).value = item['qty'] * match['price']
+                ws.cell(row=row_idx, column=total_col).value = total_price
+            else:
+                # No dedicated total column detected — write total to the column right of price
+                ws.cell(row=row_idx, column=price_col + 1).value = total_price
         else:
             ws.cell(row=row_idx, column=desc_col).fill = YELLOW
 

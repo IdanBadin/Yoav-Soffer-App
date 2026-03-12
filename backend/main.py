@@ -519,7 +519,7 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         return []
 
 
-def _validate_components_ai(items: list, api_key: str) -> list:
+def _validate_components_ai(items: list, client) -> list:
     """
     Use Claude to filter out non-purchasable drawing annotations from Vision-extracted items.
 
@@ -529,8 +529,6 @@ def _validate_components_ai(items: list, api_key: str) -> list:
     """
     if not items:
         return items
-
-    client = _anthropic.Anthropic(api_key=api_key)
 
     items_json = json.dumps(
         [{"idx": i, "desc": item.get("description", ""), "catalog": item.get("catalog", "")}
@@ -558,7 +556,7 @@ def _validate_components_ai(items: list, api_key: str) -> list:
     try:
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
         text = msg.content[0].text.strip()
@@ -624,7 +622,7 @@ async def _process_pdf_vision(
     ])
     all_items_raw: list = [item for page in page_results for item in page]
     logger.info(f"Vision PDF: {len(all_items_raw)} raw items before AI validation")
-    all_items = _validate_components_ai(all_items_raw, api_key)
+    all_items = await asyncio.to_thread(_validate_components_ai, all_items_raw, client)
 
     # Deduplicate: merge items with identical description by summing qty
     merged: dict = {}

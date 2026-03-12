@@ -22,3 +22,6 @@ frontend/.env.local
 # Vite
 *.local
 .claude/
+
+# Client examples — contains client business data, never commit
+client_examples/

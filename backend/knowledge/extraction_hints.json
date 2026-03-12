@@ -1,0 +1,189 @@
+{
+  "abbreviations": {
+    "מאמ\"ת": "molded case circuit breaker (MCCB)",
+    "מא\"ז": "miniature circuit breaker (MCB)",
+    "ממסר פחת": "residual current device (RCD)",
+    "כולאי ברק": "surge protective device (SPD)",
+    "משנ\"ז": "current transformer (CT)",
+    "PKZM": "motor protection circuit breaker",
+    "מאמ\"": "MCCB (abbreviated)",
+    "מק\"ש": "m³/h (airflow)",
+    "LS/I": "long-time, short-time, instantaneous trip",
+    "TMD": "thermal-magnetic device",
+    "CI": "metal enclosure type",
+    "IP": "ingress protection rating"
+  },
+  "component_types": [
+    {
+      "key": "enclosure",
+      "hebrew_terms": [
+        "מבנה לוח",
+        "ארון",
+        "לוח פח",
+        "קופסאת CI",
+        "פיבר",
+        "פוליאסטר"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "mccb",
+      "hebrew_terms": [
+        "מאמ\"ת",
+        "מאמת"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "mcb",
+      "hebrew_terms": [
+        "מא\"ז"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "rcd",
+      "hebrew_terms": [
+        "ממסר פחת",
+        "פחת"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "spd",
+      "hebrew_terms": [
+        "כולאי ברק",
+        "מגן ברק",
+        "כולא ברק"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "contactor",
+      "hebrew_terms": [
+        "מגען"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "relay",
+      "hebrew_terms": [
+        "ממסר",
+        "ממסר צעד"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "ct",
+      "hebrew_terms": [
+        "משנ\"ז",
+        "משנה זרם"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "motor_protection",
+      "hebrew_terms": [
+        "הגנת מנוע",
+        "מאמ\"ת זעיר",
+        "PKZM"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "selector_switch",
+      "hebrew_terms": [
+        "בורר",
+        "מפסק פיקוד"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "pushbutton",
+      "hebrew_terms": [
+        "לחצן",
+        "לחצן פטריה",
+        "לחצן חירום"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "pilot_light",
+      "hebrew_terms": [
+        "מנורות סימון",
+        "נורות סימון"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "timer",
+      "hebrew_terms": [
+        "שעון",
+        "שעון שבת",
+        "שעון אסטרונומי",
+        "טיימר"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "interface",
+      "hebrew_terms": [
+        "ממשק",
+        "ISO"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "meter",
+      "hebrew_terms": [
+        "רב מודד",
+        "מונה"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "fuse_switch",
+      "hebrew_terms": [
+        "מנתק נתיכים"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "accessories",
+      "hebrew_terms": [
+        "סליל הפסקה",
+        "מגע עזר",
+        "התקן נעילה",
+        "מהדק קצר"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "socket",
+      "hebrew_terms": [
+        "שקע"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "capacitor",
+      "hebrew_terms": [
+        "קבל"
+      ],
+      "unit": "יח'"
+    },
+    {
+      "key": "transformer",
+      "hebrew_terms": [
+        "שהאי"
+      ],
+      "unit": "יח'"
+    }
+  ],
+  "vision_vocabulary_hint": "This Israeli electrical contractor uses standard Hebrew abbreviations: מאמ\"ת for MCCBs with current ratings like 3X160A (3-pole 160A), מא\"ז for small MCBs, ממסר פחת for RCDs with format 4X40/0.03A (poles×rated current/sensitivity). Component ratings follow pattern [poles]X[current]A, trip types include LS/I and TMD. Enclosures specified as 'מבנה לוח' with current rating or physical dimensions in mm.",
+  "_meta": {
+    "generated": "2026-03-12",
+    "source_cases": 19,
+    "unique_descriptions": 161
+  }
+}

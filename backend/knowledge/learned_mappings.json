@@ -1,0 +1,1072 @@
+{
+  "version": "2026-03-12",
+  "patterns": [
+    {
+      "pattern": "ISO-1",
+      "type": "interface",
+      "hint": "ISO-1 interface relay or isolation device",
+      "freq": 1
+    },
+    {
+      "pattern": "ISO-2",
+      "type": "interface",
+      "hint": "ISO-2 interface relay or isolation device",
+      "freq": 5
+    },
+    {
+      "pattern": "ISO-4",
+      "type": "interface",
+      "hint": "ISO-4 interface relay or isolation device",
+      "freq": 5
+    },
+    {
+      "pattern": "אוטומט מדרגות",
+      "type": "timer",
+      "hint": "staircase timer/automatic light switch",
+      "freq": 2
+    },
+    {
+      "pattern": "בורר 0-1 + מפתח",
+      "type": "selector_switch",
+      "hint": "0-1 selector switch with key",
+      "freq": 1
+    },
+    {
+      "pattern": "בורר 0-1+ מפתח",
+      "type": "selector_switch",
+      "hint": "0-1 selector switch with key (same as above)",
+      "freq": 1
+    },
+    {
+      "pattern": "בורר 0-1-2",
+      "type": "selector_switch",
+      "hint": "0-1-2 three-position selector switch",
+      "freq": 2
+    },
+    {
+      "pattern": "בורר 1-0-2 2X25A",
+      "type": "selector_switch",
+      "hint": "1-0-2 changeover selector switch 2-pole 25A",
+      "freq": 1
+    },
+    {
+      "pattern": "בורר 1-0-2 על פס דין",
+      "type": "selector_switch",
+      "hint": "1-0-2 selector switch for DIN rail mounting",
+      "freq": 1
+    },
+    {
+      "pattern": "בורר כולל מפתח קפיצי להעברה שקטה",
+      "type": "selector_switch",
+      "hint": "selector switch with spring-return key for quiet operation",
+      "freq": 1
+    },
+    {
+      "pattern": "בורר סוקומק 2X25A 1-0-2",
+      "type": "selector_switch",
+      "hint": "Socomec 2-pole 25A 1-0-2 selector switch",
+      "freq": 1
+    },
+    {
+      "pattern": "בקר גילוי אש IRLAO2S",
+      "type": "fire_detection",
+      "hint": "IRLAO2S fire detection controller",
+      "freq": 1
+    },
+    {
+      "pattern": "הגנת מוע 3X4A",
+      "type": "motor_protection",
+      "hint": "3-phase motor protection 4A",
+      "freq": 1
+    },
+    {
+      "pattern": "הגנת מנוע 3X2.5-4A",
+      "type": "motor_protection",
+      "hint": "3-phase motor protection 2.5-4A adjustable",
+      "freq": 2
+    },
+    {
+      "pattern": "התקן נעילה למא\"ז",
+      "type": "accessory",
+      "hint": "locking device for circuit breaker",
+      "freq": 3
+    },
+    {
+      "pattern": "טיימר השהייה",
+      "type": "timer",
+      "hint": "delay timer/time relay",
+      "freq": 3
+    },
+    {
+      "pattern": "טרמוסטט",
+      "type": "thermostat",
+      "hint": "thermostat temperature controller",
+      "freq": 1
+    },
+    {
+      "pattern": "כולא ברק 4X25KA",
+      "type": "surge_protection",
+      "hint": "4-pole surge arrester 25kA",
+      "freq": 1
+    },
+    {
+      "pattern": "כולאי ברק",
+      "type": "surge_protection",
+      "hint": "surge arrester/lightning protection",
+      "freq": 2
+    },
+    {
+      "pattern": "כולאי ברק 4P",
+      "type": "surge_protection",
+      "hint": "4-pole surge arrester",
+      "freq": 1
+    },
+    {
+      "pattern": "כולאי ברק 4P עד 40KA",
+      "type": "surge_protection",
+      "hint": "4-pole surge arrester up to 40kA",
+      "freq": 2
+    },
+    {
+      "pattern": "לחצן חירום",
+      "type": "push_button",
+      "hint": "emergency stop button",
+      "freq": 1
+    },
+    {
+      "pattern": "לחצן חירום + הגנה מנגיעה מיקרית",
+      "type": "push_button",
+      "hint": "emergency button with accidental touch protection",
+      "freq": 2
+    },
+    {
+      "pattern": "לחצן לבדיקת מנורות סימון 9 קומות",
+      "type": "push_button",
+      "hint": "test button for indicator lamps 9 floors",
+      "freq": 1
+    },
+    {
+      "pattern": "לחצן על הדלת 22 מ\"מ",
+      "type": "push_button",
+      "hint": "22mm door-mounted push button",
+      "freq": 2
+    },
+    {
+      "pattern": "לחצן פטריה",
+      "type": "push_button",
+      "hint": "mushroom head push button",
+      "freq": 3
+    },
+    {
+      "pattern": "לחצן פטריה ננעל",
+      "type": "push_button",
+      "hint": "lockable mushroom head push button",
+      "freq": 1
+    },
+    {
+      "pattern": "לחצן פטריה על הדלת",
+      "type": "push_button",
+      "hint": "door-mounted mushroom head push button",
+      "freq": 1
+    },
+    {
+      "pattern": "לחצן פיקוד לבדיקת נוריות סימון",
+      "type": "push_button",
+      "hint": "control button for testing indicator lights",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז  ניתוק אפס 1X16A עם נעילה",
+      "type": "mcb",
+      "hint": "single-pole+neutral 16A MCB with neutral disconnect and lock",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 1X10A",
+      "type": "mcb",
+      "hint": "single-pole 10A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 1X10A+N",
+      "type": "mcb",
+      "hint": "single-pole+neutral 10A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 1X16A",
+      "type": "mcb",
+      "hint": "single-pole 16A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 1X16A+N",
+      "type": "mcb",
+      "hint": "single-pole+neutral 16A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 1X32A",
+      "type": "mcb",
+      "hint": "single-pole 32A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 1X6A",
+      "type": "mcb",
+      "hint": "single-pole 6A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 1X6A+N",
+      "type": "mcb",
+      "hint": "single-pole+neutral 6A circuit breaker",
+      "freq": 2
+    },
+    {
+      "pattern": "מא\"ז 2X32A",
+      "type": "mcb",
+      "hint": "2-pole 32A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 3X16A",
+      "type": "mcb",
+      "hint": "3-pole 16A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 3X25A",
+      "type": "mcb",
+      "hint": "3-pole 25A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 3X40A",
+      "type": "mcb",
+      "hint": "3-pole 40A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז 3X63A",
+      "type": "mcb",
+      "hint": "3-pole 63A circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז עד 1X16A",
+      "type": "mcb",
+      "hint": "single-pole circuit breaker up to 16A",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז עד 1X16A+N",
+      "type": "mcb",
+      "hint": "single-pole+neutral circuit breaker up to 16A",
+      "freq": 3
+    },
+    {
+      "pattern": "מא\"ז עד 1X32A",
+      "type": "mcb",
+      "hint": "single-pole circuit breaker up to 32A",
+      "freq": 13
+    },
+    {
+      "pattern": "מא\"ז עד 1X32A+N",
+      "type": "mcb",
+      "hint": "single-pole+neutral circuit breaker up to 32A",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז עד 1X40A",
+      "type": "mcb",
+      "hint": "single-pole circuit breaker up to 40A",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז עד 3X2A",
+      "type": "mcb",
+      "hint": "3-pole circuit breaker up to 2A",
+      "freq": 1
+    },
+    {
+      "pattern": "מא\"ז עד 3X32A",
+      "type": "mcb",
+      "hint": "3-pole circuit breaker up to 32A",
+      "freq": 14
+    },
+    {
+      "pattern": "מא\"ז עד 3X40A",
+      "type": "mcb",
+      "hint": "3-pole circuit breaker up to 40A",
+      "freq": 9
+    },
+    {
+      "pattern": "מא\"ז עד 3X63A",
+      "type": "mcb",
+      "hint": "3-pole circuit breaker up to 63A",
+      "freq": 6
+    },
+    {
+      "pattern": "מאוורר 70 מק\"ש כולל פילטר ותריס",
+      "type": "ventilation",
+      "hint": "70 m3/h fan with filter and shutter",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\" 3X400A LS/I",
+      "type": "mccb",
+      "hint": "3-pole 400A MCCB with LS/I trip unit",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 3X160/100A LS/I",
+      "type": "mccb",
+      "hint": "3-pole 160A frame 100A adjustable MCCB LS/I",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 3X160/160 LS/I",
+      "type": "mccb",
+      "hint": "3-pole 160A MCCB with LS/I trip unit",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 3X160A",
+      "type": "mccb",
+      "hint": "3-pole 160A molded case circuit breaker",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 3X250 LS/I",
+      "type": "mccb",
+      "hint": "3-pole 250A MCCB with LS/I trip unit",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 4X160/63A+ פחת משולב",
+      "type": "mccb_rcd",
+      "hint": "4-pole 160A/63A MCCB with integrated RCD",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת 4X63A משולב פחת",
+      "type": "mccb_rcd",
+      "hint": "4-pole 63A MCCB with integrated RCD",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת זעיר  PKZM",
+      "type": "motor_protection",
+      "hint": "PKZM miniature motor protection switch",
+      "freq": 2
+    },
+    {
+      "pattern": "מאמ\"ת זעיר (PKZM)",
+      "type": "motor_protection",
+      "hint": "PKZM miniature motor protection switch",
+      "freq": 2
+    },
+    {
+      "pattern": "מאמ\"ת זעיר PKZM",
+      "type": "motor_protection",
+      "hint": "PKZM miniature motor protection switch",
+      "freq": 6
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X100",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 100A",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X100A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 100A",
+      "freq": 8
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X125A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 125A",
+      "freq": 3
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X160A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 160A",
+      "freq": 2
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X160A LSI",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 160A with LSI trip",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X250A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 250A",
+      "freq": 3
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X250A LSI",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 250A with LSI trip",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X400A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 400A",
+      "freq": 1
+    },
+    {
+      "pattern": "מאמ\"ת עד 3X630A",
+      "type": "mccb",
+      "hint": "3-pole MCCB up to 630A",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח IP 2150/800 כולל גגון",
+      "type": "enclosure",
+      "hint": "IP-rated panel enclosure 2150x800mm with roof",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח ביתי 72 מקום",
+      "type": "enclosure",
+      "hint": "residential panel enclosure 72-module capacity",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח בקופסאת CI 250/350",
+      "type": "enclosure",
+      "hint": "CI box panel enclosure 250x350mm",
+      "freq": 2
+    },
+    {
+      "pattern": "מבנה לוח עד 250A",
+      "type": "enclosure",
+      "hint": "panel enclosure rated up to 250A",
+      "freq": 9
+    },
+    {
+      "pattern": "מבנה לוח עד 400A",
+      "type": "enclosure",
+      "hint": "panel enclosure rated up to 400A",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח עד 630A (עומק 600)",
+      "type": "enclosure",
+      "hint": "panel enclosure up to 630A with 600mm depth",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח פח 1200/800",
+      "type": "enclosure",
+      "hint": "metal sheet panel enclosure 1200x800mm",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח פח 2100/600",
+      "type": "enclosure",
+      "hint": "metal sheet panel enclosure 2100x600mm",
+      "freq": 1
+    },
+    {
+      "pattern": "מבנה לוח פח 2150/1300",
+      "type": "enclosure",
+      "hint": "metal sheet panel enclosure 2150x1300mm",
+      "freq": 1
+    },
+    {
+      "pattern": "מגן ברק",
+      "type": "surge_protection",
+      "hint": "lightning/surge protection device",
+      "freq": 3
+    },
+    {
+      "pattern": "מגע עזר למאמ\"ת",
+      "type": "accessory",
+      "hint": "auxiliary contact for MCCB",
+      "freq": 1
+    },
+    {
+      "pattern": "מגעי עזר למאמ\"ת",
+      "type": "accessory",
+      "hint": "auxiliary contacts for MCCB",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען 3X16A",
+      "type": "contactor",
+      "hint": "3-pole 16A contactor",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען 3X18A",
+      "type": "contactor",
+      "hint": "3-pole 18A contactor",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען 3X25A",
+      "type": "contactor",
+      "hint": "3-pole 25A contactor",
+      "freq": 2
+    },
+    {
+      "pattern": "מגען 3X40A",
+      "type": "contactor",
+      "hint": "3-pole 40A contactor",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען 3X65A",
+      "type": "contactor",
+      "hint": "3-pole 65A contactor",
+      "freq": 2
+    },
+    {
+      "pattern": "מגען עד 160A",
+      "type": "contactor",
+      "hint": "contactor up to 160A",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען עד 3X100A",
+      "type": "contactor",
+      "hint": "3-pole contactor up to 100A",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען עד 3X25A",
+      "type": "contactor",
+      "hint": "3-pole contactor up to 25A",
+      "freq": 6
+    },
+    {
+      "pattern": "מגען עד 3X32A",
+      "type": "contactor",
+      "hint": "3-pole contactor up to 32A",
+      "freq": 2
+    },
+    {
+      "pattern": "מגען עד 3X40",
+      "type": "contactor",
+      "hint": "3-pole contactor up to 40A",
+      "freq": 1
+    },
+    {
+      "pattern": "מגען עד 3X40A",
+      "type": "contactor",
+      "hint": "3-pole contactor up to 40A",
+      "freq": 3
+    },
+    {
+      "pattern": "מגען עד 40A",
+      "type": "contactor",
+      "hint": "contactor up to 40A",
+      "freq": 1
+    },
+    {
+      "pattern": "מהדק קצר",
+      "type": "busbar",
+      "hint": "short-circuit terminal/busbar clamp",
+      "freq": 1
+    },
+    {
+      "pattern": "מהדקי קצר",
+      "type": "busbar",
+      "hint": "short-circuit terminals/busbar clamps",
+      "freq": 2
+    },
+    {
+      "pattern": "מונה (חברת מפה)",
+      "type": "meter",
+      "hint": "electricity meter by Mapa company",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר 4 פינים",
+      "type": "relay",
+      "hint": "4-pin relay",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר פחת 2X40/0.03A",
+      "type": "rcd",
+      "hint": "2-pole 40A/30mA residual current relay",
+      "freq": 2
+    },
+    {
+      "pattern": "ממסר פחת 2X40A",
+      "type": "rcd",
+      "hint": "2-pole 40A residual current relay",
+      "freq": 5
+    },
+    {
+      "pattern": "ממסר פחת 4X40/0.03A",
+      "type": "rcd",
+      "hint": "4-pole 40A/30mA residual current relay",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר פחת 4X40A",
+      "type": "rcd",
+      "hint": "4-pole 40A residual current relay",
+      "freq": 11
+    },
+    {
+      "pattern": "ממסר פחת 4X63/0.03A",
+      "type": "rcd",
+      "hint": "4-pole 63A/30mA residual current relay",
+      "freq": 2
+    },
+    {
+      "pattern": "ממסר פחת 4X63A",
+      "type": "rcd",
+      "hint": "4-pole 63A residual current relay",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר פיקוד נשלף RELAY",
+      "type": "relay",
+      "hint": "withdrawable control relay",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר צעד",
+      "type": "relay",
+      "hint": "impulse/step relay",
+      "freq": 6
+    },
+    {
+      "pattern": "ממסר צעד 1NO+1NC",
+      "type": "relay",
+      "hint": "impulse relay with 1NO+1NC contacts",
+      "freq": 1
+    },
+    {
+      "pattern": "ממסר צעד 1X16A",
+      "type": "relay",
+      "hint": "single-pole 16A impulse relay",
+      "freq": 2
+    },
+    {
+      "pattern": "ממסר צעד 2X16A",
+      "type": "relay",
+      "hint": "2-pole 16A impulse relay",
+      "freq": 1
+    },
+    {
+      "pattern": "ממשק ISO-1",
+      "type": "interface",
+      "hint": "ISO-1 interface relay module",
+      "freq": 3
+    },
+    {
+      "pattern": "ממשק ISO-4",
+      "type": "interface",
+      "hint": "ISO-4 interface relay module",
+      "freq": 3
+    },
+    {
+      "pattern": "מנורות סימון",
+      "type": "indicator",
+      "hint": "indicator/pilot lights",
+      "freq": 3
+    },
+    {
+      "pattern": "מנורות סימון 220",
+      "type": "indicator",
+      "hint": "220V indicator/pilot lights",
+      "freq": 7
+    },
+    {
+      "pattern": "מנורות סימון לפס דין",
+      "type": "indicator",
+      "hint": "DIN rail mounted indicator lights",
+      "freq": 1
+    },
+    {
+      "pattern": "מנורות סימון על פס דין",
+      "type": "indicator",
+      "hint": "DIN rail mounted indicator lights",
+      "freq": 1
+    },
+    {
+      "pattern": "מנתק נתיכים",
+      "type": "fuse_switch",
+      "hint": "fuse disconnector switch",
+      "freq": 4
+    },
+    {
+      "pattern": "מנתק נתיכים + נתיכים 32A",
+      "type": "fuse_switch",
+      "hint": "fuse disconnector with 32A fuses",
+      "freq": 1
+    },
+    {
+      "pattern": "מנתק נתיכים + נתיכים 3X125A",
+      "type": "fuse_switch",
+      "hint": "3-pole fuse disconnector with 125A fuses",
+      "freq": 1
+    },
+    {
+      "pattern": "מנתק נתיכים 3X100A",
+      "type": "fuse_switch",
+      "hint": "3-pole 100A fuse disconnector",
+      "freq": 3
+    },
+    {
+      "pattern": "מנתק נתיכים+נתיכים 3X125A",
+      "type": "fuse_switch",
+      "hint": "3-pole fuse disconnector with 125A fuses",
+      "freq": 1
+    },
+    {
+      "pattern": "מפסק זרם 3X25A",
+      "type": "load_break_switch",
+      "hint": "3-pole 25A load break switch",
+      "freq": 1
+    },
+    {
+      "pattern": "מפסק זרם 4X25A",
+      "type": "load_break_switch",
+      "hint": "4-pole 25A load break switch",
+      "freq": 1
+    },
+    {
+      "pattern": "מפסק פיקוד 0-1",
+      "type": "control_switch",
+      "hint": "0-1 control switch",
+      "freq": 1
+    },
+    {
+      "pattern": "מפסק פיקוד 0-1-2",
+      "type": "control_switch",
+      "hint": "0-1-2 control/changeover switch",
+      "freq": 2
+    },
+    {
+      "pattern": "מפסק פיקוד 0-1-2 (מחליף)",
+      "type": "control_switch",
+      "hint": "0-1-2 changeover control switch",
+      "freq": 2
+    },
+    {
+      "pattern": "משנ\"ז 100/5A",
+      "type": "current_transformer",
+      "hint": "100/5A current transformer",
+      "freq": 1
+    },
+    {
+      "pattern": "משנ\"ז 3X100A",
+      "type": "current_transformer",
+      "hint": "3-phase 100A current transformer set",
+      "freq": 1
+    },
+    {
+      "pattern": "משנ\"ז 3X250A",
+      "type": "current_transformer",
+      "hint": "3-phase 250A current transformer set",
+      "freq": 1
+    },
+    {
+      "pattern": "משנ\"ז עד 200/5",
+      "type": "current_transformer",
+      "hint": "current transformer up to 200/5A",
+      "freq": 1
+    },
+    {
+      "pattern": "משנה זרם 125/5A",
+      "type": "current_transformer",
+      "hint": "125/5A current transformer",
+      "freq": 1
+    },
+    {
+      "pattern": "משנה זרם 200/5",
+      "type": "current_transformer",
+      "hint": "200/5A current transformer",
+      "freq": 1
+    },
+    {
+      "pattern": "משנה זרם עד 100/5",
+      "type": "current_transformer",
+      "hint": "current transformer up to 100/5A",
+      "freq": 1
+    },
+    {
+      "pattern": "משנה זרם עד 200/4",
+      "type": "current_transformer",
+      "hint": "current transformer up to 200/4A",
+      "freq": 1
+    },
+    {
+      "pattern": "משנה זרם עד 400/5",
+      "type": "current_transformer",
+      "hint": "current transformer up to 400/5A",
+      "freq": 1
+    },
+    {
+      "pattern": "נורות סימון על פס דין",
+      "type": "indicator",
+      "hint": "DIN rail mounted indicator lights",
+      "freq": 1
+    },
+    {
+      "pattern": "סליל הפסקה",
+      "type": "accessory",
+      "hint": "shunt trip release coil",
+      "freq": 9
+    },
+    {
+      "pattern": "סליל הפסקה למאמ\"ת",
+      "type": "accessory",
+      "hint": "shunt trip coil for MCCB",
+      "freq": 5
+    },
+    {
+      "pattern": "פחת 2X40A",
+      "type": "rcd",
+      "hint": "2-pole 40A residual current device",
+      "freq": 2
+    },
+    {
+      "pattern": "פירוק ציוד שהוחלף כולל חוטים ושינויים בלוח",
+      "type": "labor",
+      "hint": "dismantling replaced equipment including wires and panel modifications",
+      "freq": 1
+    },
+    {
+      "pattern": "פס צבירה מודולארי 125A",
+      "type": "busbar",
+      "hint": "125A modular distribution busbar",
+      "freq": 1
+    },
+    {
+      "pattern": "קבל 10KVAR",
+      "type": "capacitor",
+      "hint": "10kVAR power factor correction capacitor",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד PM135E",
+      "type": "meter",
+      "hint": "PM135E multifunction power meter",
+      "freq": 2
+    },
+    {
+      "pattern": "רב מודד SATEC  135E",
+      "type": "meter",
+      "hint": "SATEC 135E multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד SATEC 135E",
+      "type": "meter",
+      "hint": "SATEC 135E multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד SATEC 135EH",
+      "type": "meter",
+      "hint": "SATEC 135EH multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד סאטק PM135E",
+      "type": "meter",
+      "hint": "SATEC PM135E multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד סטק PM135E",
+      "type": "meter",
+      "hint": "SATEC PM135E multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "רב מודד סטק PM135EH",
+      "type": "meter",
+      "hint": "SATEC PM135EH multifunction power meter",
+      "freq": 1
+    },
+    {
+      "pattern": "שהאי 230/24VAC/100VA",
+      "type": "transformer",
+      "hint": "230V/24VAC 100VA control transformer",
+      "freq": 1
+    },
+    {
+      "pattern": "שינוי 5 מעגלי מיזוג אוויר",
+      "type": "labor",
+      "hint": "modification of 5 air conditioning circuits",
+      "freq": 1
+    },
+    {
+      "pattern": "שעון אסטרונומי",
+      "type": "timer",
+      "hint": "astronomical time switch",
+      "freq": 4
+    },
+    {
+      "pattern": "שעון דיגיטלי",
+      "type": "timer",
+      "hint": "digital time switch",
+      "freq": 1
+    },
+    {
+      "pattern": "שעון שבת אסטרונומי",
+      "type": "timer",
+      "hint": "Shabbat astronomical time switch",
+      "freq": 1
+    },
+    {
+      "pattern": "שעון שבת דיגיטלי",
+      "type": "timer",
+      "hint": "Shabbat digital time switch",
+      "freq": 4
+    },
+    {
+      "pattern": "שעון שבת מכני",
+      "type": "timer",
+      "hint": "mechanical Shabbat time switch",
+      "freq": 1
+    },
+    {
+      "pattern": "שקע IP67 1X16A CEE",
+      "type": "socket",
+      "hint": "IP67 single-phase 16A CEE industrial socket",
+      "freq": 1
+    },
+    {
+      "pattern": "שקע IP67 3X16A CEE",
+      "type": "socket",
+      "hint": "IP67 3-phase 16A CEE industrial socket",
+      "freq": 1
+    },
+    {
+      "pattern": "שקע IP67 3X32A CEE",
+      "type": "socket",
+      "hint": "IP67 3-phase 32A CEE industrial socket",
+      "freq": 1
+    },
+    {
+      "pattern": "תאורת לוח חשמל + מפסק גבול",
+      "type": "lighting",
+      "hint": "panel lighting with limit switch",
+      "freq": 1
+    },
+    {
+      "pattern": "תוספת יום עבודה על שינויים",
+      "type": "labor",
+      "hint": "additional workday charge for modifications",
+      "freq": 1
+    }
+  ],
+  "_meta": {
+    "generated": "2026-03-12",
+    "source_cases": 19,
+    "case_summaries": [
+      {
+        "case": "אוניברסיטת תל אביב",
+        "file": "חשבון ללוח אוניברסיטת תל אביב - אלי 00050.xlsx",
+        "row_count": 16
+      },
+      {
+        "case": "הצעת מחיר לוח קומה 3",
+        "file": "הצעת מחיר לוח קומה 3 כוח ומאור דה וינצי - סתיו 00053.xlsx",
+        "row_count": 17
+      },
+      {
+        "case": "הצעת מחיר לוח קומה 5",
+        "file": "‏‏‏‏הצעת מחיר לוח קומה 5 כוח ומאור דה וינצי - סתיו 00055.xlsx",
+        "row_count": 15
+      },
+      {
+        "case": "הצעת מחיר לוח קומה 6",
+        "file": "‏‏‏‏‏‏הצעת מחיר לוח קומה 6 כוח ומאור דה וינצי - סתיו 00057.xlsx",
+        "row_count": 16
+      },
+      {
+        "case": "הצעת מחיר ללוח בית הנער - אלי 00014",
+        "file": "חשבון סופי ללוח בית הנער.xlsx",
+        "row_count": 15
+      },
+      {
+        "case": "הצעת מחיר ללוח וולוו קומה 1 - ישראל 00006",
+        "file": "הצעת מחיר ללוח וולוו קומה 1 - ישראל 00006.xlsx",
+        "row_count": 25
+      },
+      {
+        "case": "הצעת מחיר ללוח וולוו קומה 2 - ישראל 00010",
+        "file": "הצעת מחיר ללוח וולוו קומה 2 - ישראל 00010.xlsx",
+        "row_count": 26
+      },
+      {
+        "case": "הצעת מחיר ללוח זכותי משנה - ישראל 00018",
+        "file": "חשבון סופי ללוח זכותי משנה.xlsx",
+        "row_count": 8
+      },
+      {
+        "case": "הצעת מחיר ללוח זכותי ראשי  - ישראל 00024",
+        "file": "חשבון סופי ללוח זכותי ראשי.xlsx",
+        "row_count": 21
+      },
+      {
+        "case": "כללית פינסקר ראשלצ",
+        "file": "חן סופי 2497.xlsx",
+        "row_count": 21
+      },
+      {
+        "case": "לוח חשמל מיזוג אוויר 1 - סתיו 00070",
+        "file": "חשבון לוח חשמל מיזוג אוויר 1 - סתיו 00070.xlsx",
+        "row_count": 3
+      },
+      {
+        "case": "לוח חשמל מיזוג אוויר 2 - סתיו 00071",
+        "file": "חשבון לוח חשמל מיזוג אוויר 2 - סתיו 00071.xlsx",
+        "row_count": 4
+      },
+      {
+        "case": "מבנה 41 מבת",
+        "file": "חשבון ללוח מבנה 41.xlsx",
+        "row_count": 30
+      },
+      {
+        "case": "מטבחי סמל",
+        "file": "חשבון לוח מטבחי סמל - סתיו 00085.xlsx",
+        "row_count": 25
+      },
+      {
+        "case": "מעון נעורים ביתן חרוב",
+        "file": "חשבון מעון נעורים ביתן חרוב - אלי 00072.xlsx",
+        "row_count": 20
+      },
+      {
+        "case": "מעון נעורים לוח חדר אוכל",
+        "file": "חשבון מעון נעורים חדר אוכל - אלי 00074.xlsx",
+        "row_count": 21
+      },
+      {
+        "case": "מעון רוחמה",
+        "file": "חשבון סופי למעון רוחמה.xlsx",
+        "row_count": 19
+      },
+      {
+        "case": "ראם מבנה 2",
+        "file": "חשבון לוח תעש ראם מבנה 2 - סתיו 00090.xlsx",
+        "row_count": 0
+      },
+      {
+        "case": "רמז",
+        "file": "חשבון סופי 2498.xlsx",
+        "row_count": 28
+      }
+    ]
+  }
+}

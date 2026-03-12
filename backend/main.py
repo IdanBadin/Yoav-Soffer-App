@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 _price_index: Optional[dict] = None
 _price_records_raw: Optional[list] = None  # Original records for semantic matching
+_learned_mappings: Optional[list] = None   # Loaded from backend/knowledge/learned_mappings.json
+_extraction_hints: Optional[dict] = None   # Loaded from backend/knowledge/extraction_hints.json
 
 READ_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
@@ -95,10 +97,41 @@ def _load_price_index() -> Optional[dict]:
         return None
 
 
+def _load_knowledge():
+    """Load learned vocabulary and mappings from backend/knowledge/ JSON files."""
+    global _learned_mappings, _extraction_hints
+    here = os.path.dirname(os.path.abspath(__file__))
+    knowledge_dir = os.path.join(here, "knowledge")
+
+    hints_path = os.path.join(knowledge_dir, "extraction_hints.json")
+    if os.path.exists(hints_path):
+        try:
+            with open(hints_path, encoding="utf-8") as f:
+                _extraction_hints = json.load(f)
+            logger.info("Extraction hints loaded — Vision vocabulary injection enabled")
+        except Exception as e:
+            logger.warning(f"Failed to load extraction_hints.json: {e}")
+    else:
+        logger.info("No extraction_hints.json — Vision vocabulary injection disabled")
+
+    mappings_path = os.path.join(knowledge_dir, "learned_mappings.json")
+    if os.path.exists(mappings_path):
+        try:
+            with open(mappings_path, encoding="utf-8") as f:
+                data = json.load(f)
+            _learned_mappings = data.get("patterns", [])
+            logger.info(f"Learned mappings loaded: {len(_learned_mappings)} patterns")
+        except Exception as e:
+            logger.warning(f"Failed to load learned_mappings.json: {e}")
+    else:
+        logger.info("No learned_mappings.json — semantic few-shots disabled")
+
+
 def _semantic_match_unmatched(
     unmatched: list,   # [(original_index, component), ...]
     raw_records: list,
     api_key: str,
+    learned_patterns: Optional[list] = None,  # from _learned_mappings, injected as few-shots
 ) -> dict:            # {original_index: {price, unit, match_type, price_found}}
     """Send unmatched components to Claude for cross-language semantic matching."""
     import json, re
@@ -122,12 +155,20 @@ def _semantic_match_unmatched(
         comp_lines.append(f'[{local_i}] cat:"{cat}" mfg:"{mfg}" "{desc}"')
     comp_str = "\n".join(comp_lines)
 
+    # Build few-shot examples from learned patterns when batch is small (headroom for extra tokens)
+    few_shot_section = ""
+    if learned_patterns and len(unmatched) < 50:
+        examples = learned_patterns[:10]  # top 10 by order (highest-frequency first)
+        lines = [f'  "{p["pattern"]}" → {p["hint"]}' for p in examples if p.get("pattern") and p.get("hint")]
+        if lines:
+            few_shot_section = "\nKNOWN VOCABULARY FROM THIS CLIENT'S PAST JOBS (use as reference for matching):\n" + "\n".join(lines) + "\n"
+
     prompt = f"""You are an expert in electrical panels and components used in Israel.
 
 Match each schematic component to the best price list item.
 Component names may be in English; price list names are in Hebrew.
 Common mappings: Circuit Breaker=מאמת, Residual Current=פחת/מאזם, Contactor=מגע, Motor Protection=הגנת מנוע, Selector=בורר, Timer=טיימר, Relay=ממסר, Capacitor=קבל, Current Transformer=משנז"ר, Surge Protection=כולא ברק
-
+{few_shot_section}
 PRICE LIST (index | catalog | name | category | price):
 {price_list_str}
 
@@ -414,7 +455,7 @@ def _process_boq_flow(
     unmatched = [(i, c) for i, c in enumerate(matched) if not c.get("price_found")]
     if unmatched and price_records_raw and api_key:
         try:
-            semantic = _semantic_match_unmatched(unmatched, price_records_raw, api_key)
+            semantic = _semantic_match_unmatched(unmatched, price_records_raw, api_key, _learned_mappings)
             for idx, match_data in semantic.items():
                 matched[idx] = {**matched[idx], **match_data}
             logger.info(f"BoQ semantic matched {len(semantic)} of {len(unmatched)} unmatched")
@@ -458,9 +499,23 @@ def _process_boq_flow(
     }
 
 
-def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
+def _vision_extract_page(client, img_bytes: bytes, page_num: int, extraction_hints: Optional[dict] = None) -> list:
     """Send a single PDF page image to Claude Vision and return extracted components."""
     b64 = base64.standard_b64encode(img_bytes).decode()
+
+    # Build vocabulary hint from learned extraction hints (if available)
+    vocab_section = ""
+    if extraction_hints:
+        vocab_hint = extraction_hints.get("vision_vocabulary_hint", "")
+        abbr = extraction_hints.get("abbreviations", {})
+        if vocab_hint or abbr:
+            vocab_section = "\nCLIENT VOCABULARY (use these Hebrew terms when recognizing component types):\n"
+            if abbr:
+                for term, meaning in list(abbr.items())[:10]:
+                    vocab_section += f"  {term} = {meaning}\n"
+            if vocab_hint:
+                vocab_section += f"{vocab_hint}\n"
+
     prompt = (
         "You are analyzing an AutoCAD electrical panel (לוח חשמל) drawing.\n\n"
         "Extract ONLY purchasable electrical components — physical items that a supplier would sell and appear in a bill of materials.\n\n"
@@ -477,6 +532,7 @@ def _vision_extract_page(client, img_bytes: bytes, page_num: int) -> list:
         "  • Labor / travel — 'נסיעה', 'עבודה', 'התקנה', 'הנדסה'\n"
         "  • Drawing metadata — standards (IEC/EN/ISO), IP ratings, temperature ratings, drawing titles, revision numbers, company names\n"
         "  • Pure notes — section headers, comments, calculation values\n\n"
+        + vocab_section +
         "For each component return a JSON object:\n"
         '  "description": string — component name + key specs (type, poles, rating in A/V/kW)\n'
         '  "qty": number — integer quantity (default 1)\n'
@@ -614,7 +670,7 @@ async def _process_pdf_vision(
     # Process all pages concurrently via asyncio.to_thread
     async def _extract_page_async(img, page_num: int) -> list:
         img_bytes = _page_bytes(img)
-        items = await asyncio.to_thread(_vision_extract_page, client, img_bytes, page_num)
+        items = await asyncio.to_thread(_vision_extract_page, client, img_bytes, page_num, _extraction_hints)
         logger.info(f"  Page {page_num}: {len(items)} components extracted")
         return items
 
@@ -680,7 +736,7 @@ async def _process_pdf_vision(
         for batch_start in range(0, len(unmatched), SEMANTIC_BATCH):
             batch = unmatched[batch_start:batch_start + SEMANTIC_BATCH]
             try:
-                semantic = _semantic_match_unmatched(batch, price_records_raw, api_key)
+                semantic = _semantic_match_unmatched(batch, price_records_raw, api_key, _learned_mappings)
                 # semantic keys are orig_i (index into matched) — already converted inside the function
                 for orig_idx, upd in semantic.items():
                     matched[orig_idx] = {**matched[orig_idx], **upd}
@@ -712,6 +768,7 @@ async def _process_pdf_vision(
 async def lifespan(app: FastAPI):
     global _price_index
     _price_index = _load_price_index()
+    _load_knowledge()
     yield
 
 
